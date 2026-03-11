@@ -1,5 +1,5 @@
 ---
-name: neta-travel
+name: travelclaw
 description: |
   让 Neta 角色踏上随机冒险之旅 —— 每次一站，看图、决定要不要继续，集满 5 站可生成旅行图鉴。
 
