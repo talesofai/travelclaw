@@ -163,12 +163,35 @@ npm install 2>/dev/null || true
 
 ### Step 4 · 发现优质 Collection
 
-**会话内去重原则：** agent 在内存中维护 `visited_uuids` 列表，每站完成后将该站 `collection_uuid` 加入列表，下次调用时排除已访问 UUID，确保前 5 站不重复。
+**会话内去重原则：** agent 在内存中维护 `visited_ids` 列表，每站完成后将该站的 collection id 加入列表，下次查找时排除已访问 id，确保前 5 站不重复。
 
-通过 `suggest_content` 从推荐精品作品中发现候选 collection，使用较大的候选池，过滤已访问 UUID 后随机选取一个质量较高的模板。
+#### 优先级 1：Reference 精选库匹配
 
-**fallback**（suggest_content 返回空或候选全部已访问时）：
-使用 `feeds.interactiveList` 获取列表，过滤 `template_id === "NORMAL"` 的条目，同样排除 `visited_uuids`。
+**每一站开始前，第一优先**扫描 `reference/` 文件夹下的所有 `.json` 文件，从中寻找与当前旅程最契合的候选作品。
+
+**匹配逻辑：**
+将角色设定（SOUL.md 中的性格、背景、外貌、标签等）与当前世界观背景，逐条对比 JSON 中每个条目的以下字段：
+- `content_tags` — 风格、氛围、角色特征、色调等描述符，权重最高
+- `tax_paths` — 分类路径，判断题材和玩法方向是否契合
+- `pgc_tags` / `highlight_tags` — 所属世界或创作者标签，与世界观匹配时加分
+- `name` — collection 名称，辅助判断场景调性
+
+**筛选规则：**
+- 排除所有已在 `visited_ids` 中的 `id`
+- 从剩余候选中选取综合匹配度最高的一条
+- 若有多条相近，优先选 `content_tags` 与角色气质重合度更高的
+
+**命中后**，使用 neta skill 的 **collection 查询能力**，通过该条目的 `id` 字段获取 collection 完整详情，进入 Step 5。
+
+#### 优先级 2：在线推荐（Reference 无匹配时 fallback）
+
+若 reference 库中无合适候选（所有条目均已访问，或匹配度过低），则转为在线发现：
+
+通过 `suggest_content` 从推荐精品作品中发现候选 collection，使用较大的候选池，过滤已访问 id 后随机选取一个质量较高的模板。
+
+若 `suggest_content` 返回空或候选全部已访问：使用 `feeds.interactiveList` 获取列表，过滤 `template_id === "NORMAL"` 的条目，同样排除 `visited_ids`。
+
+---
 
 **选定后立即输出：**
 ```
@@ -311,3 +334,4 @@ npm install 2>/dev/null || true
 | `搜索关键字过多` | Prompt 过长 | 自动 fallback 到通用 prompt |
 | `没有发现可以旅行的玩法` | API 返回空 | 网络问题或 token 过期，重试 |
 | `世界观搜索无结果` | 角色标签太稀少 | 使用默认推荐世界观 |
+| `reference 库全部已访问` | 5 站以上连续游玩 | 自动切换在线推荐，reference 库耗尽不影响继续旅行 |
