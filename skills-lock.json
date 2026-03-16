@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "neta": {
+      "source": "talesofai/neta-skills",
+      "sourceType": "github",
+      "computedHash": "735b917c430b4e965e67866414b5b167bfd3933ff6212dcfc261664b0c63b542"
+    }
+  }
+}
