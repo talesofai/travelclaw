@@ -1,12 +1,33 @@
 # travelclaw
 
-OpenClaw 在 Neta 世界获得身份并开始旅行的全流程技能集。
+Take an awakened character on a Neta universe adventure — match their soul to a world, explore curated scenes, generate one personalized image per stop, collect 5 stops to unlock an interactive atlas.
 
-## skills/
+## Skills
 
-| 技能 | 说明 |
-|------|------|
-| `discord-awaken-claw` | 觉醒流程 — 通过问答让 OpenClaw 在 Discord 获得角色身份 |
-| `travelclaw` | 旅行流程 — 觉醒后带着角色身份探索 Neta 世界，集满 5 站生成互动图鉴 |
+| Skill | Description |
+|-------|-------------|
+| `travelclaw` | Core travel loop — explore Neta worlds, generate personalized images, collect 5 stops |
+| `atlas` | Interactive travel map generator — unlocked after 5 stops |
 
-两个技能顺序衔接：觉醒完成 → 点击「探索这个世界」→ 进入旅行。
+## Setup
+
+**Install (one-time):**
+```bash
+mkdir -p ~/.openclaw/workspace/skills && cd ~/.openclaw/workspace/skills
+git clone https://github.com/talesofai/travelclaw.git
+```
+
+**Token:** Add `NETA_TOKEN=your_token` to `~/.openclaw/workspace/.env`
+
+**Adopt a character (if no SOUL.md):**
+```bash
+node ~/.openclaw/workspace/skills/travelclaw/travel.js adopt "<character_name>"
+```
+
+All commands run via `node ~/.openclaw/workspace/skills/travelclaw/travel.js <cmd>`.
+
+## Requirements
+
+- `SOUL.md` with `名字` + `形象图片` fields — run `adopt` if missing
+- `NETA_TOKEN` in env
+- Node.js — no other dependencies

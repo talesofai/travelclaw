@@ -196,7 +196,7 @@ else if (cmd === 'gen') {
 
   // Rare fallback: fetch verse preset if prompt not in cta_info directly
   if (!promptTemplate && cta.interactive_config?.verse_uuid) {
-    log('📖 fetching verse preset...');
+    log('📖 Fetching verse preset...');
     const verse = await api('GET', `/v1/verse/preset/${cta.interactive_config.verse_uuid}`)
       .catch(() => null);
     promptTemplate = verse?.launch_prompt?.core_input ?? null;
@@ -205,7 +205,7 @@ else if (cmd === 'gen') {
   // Ultimate fallback
   if (!promptTemplate) promptTemplate = `@${charName}, ${sceneName}, 高质量插画`;
 
-  log(`🔍 场景加载完毕，${charName} 即将登场...`);
+  log(`🔍 Scene loaded: ${charName} entering the scene...`);
 
   // 2. Replace placeholders
   let promptText = promptTemplate
@@ -236,7 +236,7 @@ else if (cmd === 'gen') {
   if (promptText) vtokens.push({ type: 'freetext', value: promptText, weight: 1 });
 
   // 5. Submit image generation
-  log('🎨 画笔落下，旅行画面生成中...');
+  log('🎨 Painting the scene...');
   const taskUuid = await api('POST', '/v3/make_image', {
     storyId: 'DO_NOT_USE',
     jobType: 'universal',
@@ -260,7 +260,7 @@ else if (cmd === 'gen') {
   for (let i = 0; i < 90; i++) {
     await new Promise(r => setTimeout(r, 2000));
     if (!warnedSlow && i >= 14) {
-      log('⏳ 画面渲染有点慢，再等一下下，马上就好...');
+      log('⏳ Rendering is taking a bit longer, almost there...');
       warnedSlow = true;
     }
     const result = await api('GET', `/v1/artifact/task/${task_uuid}`);
