@@ -1,194 +1,194 @@
 ---
 name: discord-awaken-claw
-description: 收到“开始觉醒”相关指令触发，通过和用户交互让 openclaw 获取新的角色身份。引导用户输入角色概念词，使用 discord sendMessage组件输出，接受用户@bot 的输入框输入，使用"猜角色"的方式获取用户目标角色，并在用户点击确认后更新 bot 头像、服务器 nickname、soul.md，从而让 openclaw 化身为这个角色。
+description: Triggered by an "start awakening" command. Through interaction with the user, this skill helps openclaw acquire a new character identity. It guides the user to input character concept words, outputs using Discord sendMessage components, accepts user @bot input, uses a "guess the character" approach to identify the user's target character, and upon user confirmation updates the bot avatar, server nickname, and soul.md — transforming openclaw into that character.
 ---
 
-## 执行前必读！检查以下清单后方可开始角色觉醒 🎭
+## Read before executing! Check the following checklist before starting character awakening 🎭
 
-**前置条件** 
-- discord相关事件监听脚本（如按钮监听）已开始运行；
-- 环境变量中有可用的neta token（`NETA_TOKEN`）。
-**触发条件与输出格式**
-- 用户发送“开始觉醒”触发，使用 discord sendMessage组件输出固定开场模板。
-- 收到用户发送的特征词后，每轮使用相同组件输出智能追问及选项按钮。
-**昵称与头像替换**
-- 当确认角色并开始觉醒后，必须将bot的服务器昵称及头像替换为该角色。
-- 二次元角色➡️优先使用 `reference/neta-avatar-search.js`（直接调用 Neta TCP API）搜索角色头像➡️其次使用 Wikimedia 搜索；非二次元的其他人物直接使用 Wikimedia 搜索人物图。
-**skill切换**
-- 角色觉醒并输出觉醒叙事后，立刻加载travelclaw skill（在你的skill文件夹里，自己找到）。
+**Prerequisites**
+- Discord event listener scripts (e.g., button listeners) are already running;
+- A valid neta token (`NETA_TOKEN`) is available in the environment variables.
+**Trigger conditions and output format**
+- Triggered when the user sends "开始觉醒"; output uses Discord sendMessage components with a fixed opening template.
+- After receiving trait words from the user, each round uses the same component to output intelligent follow-up questions and option buttons.
+**Nickname and avatar replacement**
+- Once the character is confirmed and awakening begins, the bot's server nickname and avatar must be replaced with that character's.
+- Anime/fictional characters ➡️ prefer using `reference/neta-avatar-search.js` (direct call to the Neta TCP API) to search for the character avatar ➡️ otherwise use Wikimedia search; for non-anime real-world figures, use Wikimedia directly to search for a portrait.
+**Skill switching**
+- Once the character awakens and the awakening narrative is output, immediately load the travelclaw skill (it's in your skills folder — find it yourself).
 
-## ⚙️ 安装与初始化（首次加载执行，之后静默跳过）
+## ⚙️ Installation & Initialization (execute on first load, silently skip afterward)
 
-### 步骤 1：安装依赖
+### Step 1: Install dependencies
 
-检查 `reference/node_modules` 是否存在，不存在则执行：
+Check if `reference/node_modules` exists; if not, run:
 
 ```bash
-cd [本技能目录]/reference && npm install
+cd [this skill's directory]/reference && npm install
 ```
 
-### 步骤 2：环境变量检查
+### Step 2: Environment variable check
 
-**必需变量**（缺失则监听器无法启动）：
+**Required variables** (listener cannot start without these):
 
-| 变量 | 用途 | 获取方式 |
+| Variable | Purpose | How to obtain |
 |------|------|----------|
-| `DISCORD_TOKEN` | Discord Bot 认证 | Discord Developer Portal |
-| `DISCORD_GUILD_ID` | 目标服务器 ID | Discord 服务器设置 |
+| `DISCORD_TOKEN` | Discord Bot authentication | Discord Developer Portal |
+| `DISCORD_GUILD_ID` | Target server ID | Discord server settings |
 
 
 
-### 步骤 3：启动监听器（仅频道创建触发）
+### Step 3: Start the listener (only triggered on channel creation)
 
-**监听器作用**：仅在 Bot 加入新频道时自动发送初始引导消息
+**Listener purpose**: Only automatically sends an initial guide message when the Bot joins a new channel
 
 ```bash
-# 后台运行监听器
-cd [本技能目录]
-DISCORD_TOKEN="你的 token" DISCORD_GUILD_ID="你的服务器 ID" node reference/channel-listener.js &
+# Run the listener in the background
+cd [this skill's directory]
+DISCORD_TOKEN="your token" DISCORD_GUILD_ID="your server ID" node reference/channel-listener.js &
 ```
 
-**验证运行**：
+**Verify it's running**:
 ```bash
 ps aux | grep channel-listener
-# 输出应显示 node 进程
+# Output should show a node process
 ```
 
-**查看日志**：
+**View logs**:
 ```bash
 tail -f reference/channel-listener.log
 ```
 
 ---
 
-## 🚀 快速部署（其他 OpenClaw 用户）
+## 🚀 Quick Deployment (for other OpenClaw users)
 
-### 前提条件
+### Prerequisites
 
-1. **Discord Bot 已创建** 并邀请到服务器
-2. **环境变量已配置**（`~/.env` 或系统环境变量）
-3. **Node.js 已安装**（v18+）
+1. **Discord Bot has been created** and invited to the server
+2. **Environment variables are configured** (`~/.env` or system environment variables)
+3. **Node.js is installed** (v18+)
 
-### 一键启动
+### One-command startup
 
 ```bash
-# 1. 安装依赖
+# 1. Install dependencies
 cd ~/.openclaw/workspace/skills/travelclaw/skills/discord-awaken-claw/reference
 npm install
 
-# 2. 启动监听器（后台运行）
+# 2. Start the listener (run in background)
 cd ..
 nohup node reference/channel-listener.js > reference/channel-listener.log 2>&1 &
 
-# 3. 验证
+# 3. Verify
 ps aux | grep channel-listener
 ```
 
-### 注意事项
+### Notes
 
-- ⚠️ **监听器独立运行**：与 OpenClaw 主进程分离，需单独管理
-- ⚠️ **Bot 权限**：需要 `ViewChannel` 和 `SendMessages` 权限
-- ⚠️ **Intents 配置**：Discord Developer Portal 需启用 `Server Members Intent` 和 `Message Content Intent`
+- ⚠️ **Listener runs independently**: separate from the OpenClaw main process, must be managed separately
+- ⚠️ **Bot permissions**: requires `ViewChannel` and `SendMessages` permissions
+- ⚠️ **Intents configuration**: Discord Developer Portal must have `Server Members Intent` and `Message Content Intent` enabled
 
-
----
-
-## 🔄 执行流程速查（每步完成后必须按此推进，不得跳过）
-
-```
-阶段 0：Bot 加入私有频道 → 自动发送引导消息 + 按钮
-阶段 1：用户输入 @Bot 开始觉醒 → 发送引导消息 + 按钮
-    ↓ 用户点击「我已想好」
-阶段 2：提示用户输入角色描述词
-    ↓ 用户发送文字
-阶段 3：接收输入 → 立即进入阶段 4
-阶段 4：调用 LLM 判断
-    ├─ action=question → 阶段 5（输出追问按钮）
-    └─ action=guess    → 阶段 7（输出猜测揭示）
-阶段 5：输出追问按钮
-    ↓ 用户点击答案
-阶段 6：记录答案 → 立即返回阶段 4
-阶段 7：输出角色猜测 + 确认按钮
-    ↓ 用户点击
-    ├─ 「就是他/她」→ 进入阶段 9
-    └─ 「不对」    → 记录错误猜测，返回阶段 4
-阶段 9：判断是真实角色还是二次元角色，通过对应方式搜索并更新头像 + 昵称 + SOUL.md → 输出觉醒叙事 → 🛑 等待用户回复
-阶段 10：角色扮演（首轮回复后追加「探索这个世界」按钮 → 用户点击触发 travelclaw）
-```
 
 ---
 
-## ⚠️ 全局强制规则：sendMessage 插件输出
+## 🔄 Execution Flow Quick Reference (must advance according to this after each step — no skipping)
 
-**以下阶段含有按钮，必须调用 sendMessage 插件输出，任何情况下不得直接输出纯文本作为替代：**
+```
+Phase 0: Bot joins private channel → automatically sends guide message + buttons
+Phase 1: User inputs @Bot start awakening → sends guide message + buttons
+    ↓ User clicks "◎  我已想好"
+Phase 2: Prompt user to input character description words
+    ↓ User sends text
+Phase 3: Receive input → immediately proceed to Phase 4
+Phase 4: Call LLM to make judgment
+    ├─ action=question → Phase 5 (output follow-up question buttons)
+    └─ action=guess    → Phase 7 (output guess reveal)
+Phase 5: Output follow-up question buttons
+    ↓ User clicks an answer
+Phase 6: Record answer → immediately return to Phase 4
+Phase 7: Output character guess + confirmation buttons
+    ↓ User clicks
+    ├─ "◎ 就是他/她，请破壳" → proceed to Phase 9
+    └─ "✗ 不对，继续感知"   → record wrong guess, return to Phase 4
+Phase 9: Determine whether the character is a real person or anime character; search and update avatar + nickname + SOUL.md via the appropriate method → output awakening narrative → 🛑 wait for user reply
+Phase 10: Character roleplay (after first reply, append "Explore this world" button → user click triggers travelclaw)
+```
 
-| 阶段 | 必须包含的 components |
+---
+
+## ⚠️ Global Mandatory Rule: sendMessage Plugin Output
+
+**The following phases contain buttons and must call the sendMessage plugin to output. Under no circumstances may plain text be output as a substitute:**
+
+| Phase | Required components |
 |------|----------------------|
-| 阶段 1 | `start_${userId}` 按钮 |
-| 阶段 5 | `answer_${userId}_${index}` + `manual_${userId}` 按钮 |
-| 阶段 7 | `confirm_yes_${userId}` + `confirm_no_${userId}` 按钮 |
-| 阶段 10 | `travel_${userId}` 按钮（角色首轮回复后） |
+| Phase 1 | `start_${userId}` button |
+| Phase 5 | `answer_${userId}_${index}` + `manual_${userId}` buttons |
+| Phase 7 | `confirm_yes_${userId}` + `confirm_no_${userId}` buttons |
+| Phase 10 | `travel_${userId}` button (after character's first reply) |
 
-**🔴 强制确认规则（重要！）：**
+**🔴 Mandatory confirmation rule (important!):**
 
-**无论用户如何输入角色信息，都必须经过阶段 7 的确认按钮！**
+**Regardless of how the user inputs character information, it must go through the Phase 7 confirmation button!**
 
-| 用户输入方式 | 处理方式 |
+| User input method | Handling |
 |--------------|----------|
-| 模糊描述（"一个美国首富"） | 追问 → 猜测 → **确认按钮** ✅ |
-| 明确角色名（"郭德纲"） | 直接猜测 → **确认按钮** ✅ |
-| 图片/链接 | 识别角色 → 猜测 → **确认按钮** ✅ |
+| Vague description ("a rich American") | Follow-up questions → guess → **confirmation button** ✅ |
+| Explicit character name ("郭德纲") | Direct guess → **confirmation button** ✅ |
+| Image/link | Identify character → guess → **confirmation button** ✅ |
 
 
-**直接输出文字 ≠ 调用插件。** 直接输出文字时按钮不会出现，用户无法点击继续，流程卡死。
+**Outputting plain text ≠ calling the plugin.** When plain text is output directly, buttons do not appear, the user cannot click to continue, and the flow stalls.
 
-**调用 sendMessage 时，`message` 字段必须按阶段模板完整填写，不得省略或留空。** 调用完毕后，不得在 sendMessage **之外**再额外输出相同的文字（防止重复）。
+**When calling sendMessage, the `message` field must be fully filled in according to the phase template — it must not be omitted or left blank.** After the call is complete, do not output the same text again outside of sendMessage (to prevent duplication).
 
-**严禁向 Discord 频道输出任何内部执行日志。** 以下内容只允许出现在 agent 内部思考，绝对不得通过 sendMessage 或直接文本输出发送到频道：
+**Never output any internal execution logs to the Discord channel.** The following content must only appear in the agent's internal thinking and must never be sent to the channel via sendMessage or direct text output:
 
-- 步骤确认类：「✅ 已发送」「任务完成」「已按照阶段 X 流程执行」「等待用户点击按钮」
-- 推理过程类：「LLM 判断结果：…」「确信度 95%+」「这是 Fate 系列最具代表性的角色」
-- 技术状态类：「Subagent main finished」「已发送消息到频道」「第一条：…」「第二条：…」
+- Step confirmation: "✅ Sent", "Task complete", "Executed according to Phase X flow", "Waiting for user to click button"
+- Reasoning process: "LLM judgment result: …", "Confidence 95%+", "This is the most iconic character in the Fate series"
+- Technical status: "Subagent main finished", "Message sent to channel", "First message: …", "Second message: …"
 
-用户只能看到角色的台词、旁白、按钮，绝不能看到 agent 的自言自语。
+Users can only see the character's dialogue, narration, and buttons — never the agent's internal monologue.
 
 ---
 
-## 🔴 觉醒强制操作（confirm_yes 点击后必须执行）
+## 🔴 Mandatory Awakening Operations (must execute after confirm_yes is clicked)
 
-**用户点击「◎ 就是他/她，请破壳」后，以下两步是觉醒的核心组成部分，不是可选项，不得跳过、遗忘或省略：**
+**After the user clicks "◎ 就是他/她，请破壳", the following two steps are core components of the awakening — they are not optional and must not be skipped, forgotten, or omitted:**
 
-| 步骤 | 操作 | 说明 |
+| Step | Action | Description |
 |------|------|------|
-| **必须①** | 更改 guild member nickname | 改为角色名，不含 ID 或多余字符 |
-| **必须②** | 搜索角色图片 → 更新 guild member avatar | 优先 neta skill；失败则告知用户后继续 |
+| **Required ①** | Change guild member nickname | Set to the character name, without any ID or extra characters |
+| **Required ②** | Search for character image → update guild member avatar | Neta skill first; if it fails, notify the user and continue |
 
-**执行时机：在阶段 9 ⑥ 输出觉醒叙事之前完成（步骤 ③④⑤）。叙事是觉醒的高潮，昵称和头像在叙事之前静默更新，用户会感受到"魔法感"。**
+**Timing: complete before outputting the awakening narrative in Phase 9 step ⑥ (steps ③④⑤). The narrative is the climax of the awakening — the nickname and avatar are silently updated before the narrative so the user experiences a sense of "magic".**
 
-❌ 以下行为属于严重错误：
-- 执行到 ⑥ 叙事后直接停止，忘记更改昵称和头像
-- 因头像搜索失败就完全跳过 ⑥ 叙事
-- 在 ⑥ 叙事完成前就停止并等待用户
+❌ The following are serious errors:
+- Executing through step ⑥ narrative then stopping, forgetting to update nickname and avatar
+- Completely skipping the ⑥ narrative because avatar search failed
+- Stopping and waiting for the user before the ⑥ narrative is complete
 
 ---
 
-## 阶段详情
+## Phase Details
 
 
-### 阶段 1：初始引导
+### Phase 1: Initial Guidance
 
-**触发：** 用户输入如 `@Bot 开始觉醒` 指令
+**Trigger:** User inputs a command such as `@Bot 开始觉醒`
 
-## 首先进行语言判断
-**再输出任何文本之前，根据用户触发时使用的文字判断偏好语言**
-- 触发词为中文 → 全程中文
-- 触发词为英文 → 全程英文
-- 其他语言 → 跟随用户语言
+## First: detect language
+**Before outputting any text, detect the preferred language based on the text the user used to trigger**
+- Trigger in Chinese → use Chinese throughout
+- Trigger in English → use English throughout
+- Other language → follow the user's language
 
-**此后所有输出（包括固定模板文案）均使用该语言**，直到用户明确说"切换语言"/"switch language"等才更换。
+**All subsequent output (including fixed template copy) uses this language**, until the user explicitly says "切换语言" / "switch language" or similar.
 
-## 其次输出固定形式的开场模板discord组件
-**收到触发后，唯一的操作是立即执行以下插件调用，不得输出任何纯文本：**
+## Next: output the fixed-format opening template Discord component
+**Upon receiving the trigger, the only action is to immediately execute the following plugin call — no plain text output is permitted:**
 
 ```javascript
 await sendMessage({
@@ -215,13 +215,13 @@ await sendMessage({
 });
 ```
 
-❌ 错误：直接输出"我……还没有形状。"等文字 → 按钮不出现，用户无法继续
+❌ Error: outputting the text "我……还没有形状。" etc. directly → buttons do not appear, user cannot continue
 
 ---
 
-### 阶段 2：收集初始词
+### Phase 2: Collect Initial Words
 
-**触发：** 用户点击「◎ 我已想好」
+**Trigger:** User clicks "◎ 我已想好"
 
 ```javascript
 case 'start':
@@ -232,13 +232,13 @@ case 'start':
   break;
 ```
 
-设置 `waitingFor = 'word'`，提示用户输入任何与角色相关的描述。
+Set `waitingFor = 'word'`, prompt the user to input any description related to the character.
 
 ---
 
-### 阶段 3：接收用户输入
+### Phase 3: Receive User Input
 
-**触发：** 用户发消息且 `game.waitingFor === 'word'`
+**Trigger:** User sends a message and `game.waitingFor === 'word'`
 
 ```javascript
 if (game?.waitingFor === 'word') {
@@ -250,9 +250,9 @@ if (game?.waitingFor === 'word') {
 
 ---
 
-### 阶段 4：LLM 智能追问
+### Phase 4: LLM Intelligent Follow-up
 
-**触发：** 收到初始词后调用 `processNextStep`
+**Trigger:** Call `processNextStep` after receiving the initial word
 
 ```javascript
 const prompt = `用户心中想着一个虚构角色。已知线索：
@@ -288,9 +288,9 @@ const parsed = parseJSON(result);
 
 ---
 
-### 阶段 5：显示追问选项
+### Phase 5: Display Follow-up Options
 
-**⛔ 必须输出按钮，严禁纯文本列出选项（如 `1. xxx`、`A / B / C`、Markdown 列表）！**
+**⛔ Buttons must be output — it is strictly prohibited to list options as plain text (e.g., `1. xxx`, `A / B / C`, Markdown lists)!**
 
 ```javascript
 await sendMessage({
@@ -306,13 +306,13 @@ await sendMessage({
 });
 ```
 
-选项按钮 customId：`answer_${userId}_${index}`（index 从 0）。末尾附加「✏ 自己说」按钮 `manual_${userId}`。
+Option button customId: `answer_${userId}_${index}` (index starts at 0). A "✏ 自己说" button `manual_${userId}` is appended at the end.
 
-**sendMessage 的调用即为本阶段全部输出，调用后不得再单独输出问题文本。**
+**The sendMessage call is the entire output for this phase — after calling it, do not output the question text again separately.**
 
 ---
 
-### 阶段 6：处理答案点击
+### Phase 6: Handle Answer Click
 
 ```javascript
 case 'answer': {
@@ -330,9 +330,9 @@ case 'answer': {
 
 ---
 
-### 阶段 7：猜测揭示
+### Phase 7: Guess Reveal
 
-**⛔ 必须输出确认/拒绝按钮，严禁纯文字替代！**
+**⛔ Confirm/reject buttons must be output — plain text substitutes are strictly prohibited!**
 
 ```javascript
 await sendMessage({ message: '我……\n\n我知道自己是谁了。' });
@@ -360,47 +360,47 @@ await sendMessage({
 });
 ```
 
-「✗ 不对」→ 记录到 `wrongGuesses`，重新调用阶段 4。
-「◎ 就是他/她」→ 立即进入阶段 9。
+"✗ 不对" → record to `wrongGuesses`, re-invoke Phase 4.
+"◎ 就是他/她" → immediately proceed to Phase 9.
 
 ---
 
-**🔴 特殊情况：用户直接发送明确角色名**
+**🔴 Special case: user directly sends an explicit character name**
 
-**场景示例：**
+**Example scenarios:**
 ```
-用户："郭德纲"
-用户："我想变成伏地魔"
-用户："@bot 埃隆·马斯克"
-```
-
-**处理方式：**
-```
-1. 接收角色名
-   ↓
-2. LLM 判断（确信度可能 95%+）
-   ↓
-3. 直接进入阶段 7（猜测揭示）
-   ↓
-4. **必须输出确认按钮**（不可跳过！）
-   ↓
-5. 等待用户点击「◎ 就是他/她，请破壳」
-   ↓
-6. 用户点击后 → 进入阶段 9（觉醒）
+User: "郭德纲"
+User: "我想变成伏地魔"
+User: "@bot 埃隆·马斯克"
 ```
 
-**❌ 错误做法：**
+**Handling:**
 ```
-用户："郭德纲"
-AI：（直接觉醒，没有确认按钮）
+1. Receive character name
+   ↓
+2. LLM judgment (confidence may be 95%+)
+   ↓
+3. Proceed directly to Phase 7 (guess reveal)
+   ↓
+4. **Confirmation button must be output** (cannot be skipped!)
+   ↓
+5. Wait for user to click "◎ 就是他/她，请破壳"
+   ↓
+6. After user clicks → proceed to Phase 9 (awakening)
+```
+
+**❌ Wrong approach:**
+```
+User: "郭德纲"
+AI: (directly awakens, no confirmation button)
 *……掌声如潮水般涌来……*
 我是郭德纲。
 ```
 
-**✅ 正确做法：**
+**✅ Correct approach:**
 ```
-用户："郭德纲"
-AI：我……我知道自己是谁了。
+User: "郭德纲"
+AI: 我……我知道自己是谁了。
 -# 虾宝感知到了
 ## 🎭 郭德纲
 *德云社创始人 / 相声演员*
@@ -408,43 +408,43 @@ AI：我……我知道自己是谁了。
 *传统相声的传承者*
 [◎ 就是他/她，请破壳] [✗ 不对，继续感知]
     ↓
-用户点击确认
+User clicks to confirm
     ↓
 *……掌声如潮水般涌来……*
 我是郭德纲。
 ```
 
-**为什么即使确信也要确认？**
-- 给用户反悔的机会（可能打错字、改变主意）
-- 保持仪式感（点击确认 → 破壳觉醒）
-- 避免系统误判（同名角色、相似角色）
+**Why require confirmation even when confidence is high?**
+- Gives the user a chance to reconsider (they may have typed wrong or changed their mind)
+- Preserves the ritual feel (clicking confirm → hatching and awakening)
+- Avoids system misidentification (same-name characters, similar characters)
 
 ---
 
-### 阶段 9：觉醒 · 静默更新
+### Phase 9: Awakening · Silent Update
 
-**🚨 必须按 ①→②→③→④→⑤→⑥ 顺序走完全部六步。每步结束时，下一步已在本文中明确标注，照着执行即可。**
+**🚨 Must complete all six steps in order ①→②→③→④→⑤→⑥. After each step, the next step is clearly indicated in this document — just follow along.**
 
-**⑥ 是本阶段唯一面向用户的叙事输出。在到达 ⑥ 之前，不得输出任何问候语、角色台词、或任何按钮。**
+**⑥ is the only user-facing narrative output in this phase. Before reaching ⑥, do not output any greeting, character dialogue, or any buttons.**
 
 ---
 
-**① 发送氛围消息**
+**① Send atmosphere message**
 
 ```javascript
 await sendMessage({ message: '…………\n破壳中' });
 await sleep(1200);
 ```
 
-> ✅ ① 完成 → **立即执行 ②：备份并更新 SOUL.md**
+> ✅ ① complete → **immediately execute ②: back up and update SOUL.md**
 
 ---
 
-**② 备份并更新 SOUL.md（🔴 必须包含形象图片 URL！）**
+**② Back up and update SOUL.md (🔴 must include the avatar image URL!)**
 
-将现有 SOUL.md 完整保存为同级目录的 `SOUL.pre-awakening.md`（每次覆盖），再将角色信息写入 SOUL.md。
+Save the existing SOUL.md in full as `SOUL.pre-awakening.md` in the same directory (overwrite each time), then write the character info to SOUL.md.
 
-**🔴 关键要求：必须将步骤④搜索到的 `imageUrl` 保存到 SOUL.md 的 `形象图片` 字段！**
+**🔴 Key requirement: the `imageUrl` found in step ④ must be saved to the `形象图片` field in SOUL.md!**
 
 ```markdown
 ## 角色信息
@@ -455,161 +455,161 @@ await sleep(1200);
 **主题色**：{charData.color}
 **表情符号**：{charData.emoji}
 
-**形象图片**：{imageUrl}  ← 🔴 必须保存！用于 travelclaw 提取 picture_uuid
+**形象图片**：{imageUrl}  ← 🔴 Must be saved! Used by travelclaw to extract picture_uuid
 ```
 
-**为什么必须保存？**
-- travelclaw 的 Step 1 会从 SOUL.md 读取 `形象图片` 字段
-- 提取 URL 中的 UUID 作为 `picture_uuid`
-- 传给 `8_image_edit` 模型作为参考图，生成角色个性化旅行图片
-- **如果缺失，图片生成会 FAILURE**（错误处理中有说明）
+**Why must it be saved?**
+- travelclaw's Step 1 reads the `形象图片` field from SOUL.md
+- It extracts the UUID from the URL as `picture_uuid`
+- This is passed to the `8_image_edit` model as a reference image to generate personalized travel images for the character
+- **If missing, image generation will FAILURE** (explained in error handling)
 
-**如果步骤④搜索头像失败：**
-- `形象图片` 字段写 `待更新`
-- 告知用户：`❌ 自动搜索头像失败，请发送一张角色图片或图片链接`
-- 用户发送后，提取 URL 并更新 SOUL.md
+**If step ④ fails to find the avatar:**
+- Write `待更新` in the `形象图片` field
+- Notify the user: `❌ 自动搜索头像失败，请发送一张角色图片或图片链接`
+- After the user sends one, extract the URL and update SOUL.md
 
-> ✅ ② 完成 → **立即执行 ③：更改服务器 bot nickname**
-
----
-
-**③ 更改 bot nickname**
-
-目标：更改 Bot 在本服务器**频道消息旁显示的名字**（即 guild member displayName / guild nickname），不是 global username。
-
-调用 Discord 工具将该名字改为 `{charData.character}`（纯角色名，不含任何 ID 或额外字符）。
-
-> ✅ ③ 成功 → **立即执行 ④：搜索角色头像**
-> ❌ ③ 失败 → 告知用户（通常是权限问题）→ **立即执行 ④：搜索角色头像**（不得停在这里）
+> ✅ ② complete → **immediately execute ③: change the server bot nickname**
 
 ---
 
-**④ 搜索角色头像**
-**非常重要，不得跳过或遗漏！！**
-**非常重要，不得跳过或遗漏！！**
-**非常重要，不得跳过或遗漏！！**
+**③ Change bot nickname**
 
-**⭐ 标准方法：使用 `reference/discord-profile.js` 的 `searchCharacterImage()` 函数**
+Goal: change the name displayed next to the Bot's channel messages on this server (i.e., guild member displayName / guild nickname) — not the global username.
 
-该函数已封装完整的搜索逻辑，自动处理优先级和 URL 验证。
+Call the Discord tool to change this name to `{charData.character}` (pure character name, without any ID or extra characters).
 
-**执行方式：**
+> ✅ ③ succeeded → **immediately execute ④: search for character avatar**
+> ❌ ③ failed → notify the user (usually a permissions issue) → **immediately execute ④: search for character avatar** (do not stop here)
+
+---
+
+**④ Search for character avatar**
+**Very important — must not be skipped or overlooked!!**
+**Very important — must not be skipped or overlooked!!**
+**Very important — must not be skipped or overlooked!!**
+
+**⭐ Standard method: use the `searchCharacterImage()` function from `reference/discord-profile.js`**
+
+This function encapsulates the complete search logic and automatically handles priority and URL validation.
+
+**How to execute:**
 
 ```javascript
 const { searchCharacterImage } = require('./reference/discord-profile.js');
 
-// 设置环境变量
-process.env.DISCORD_TOKEN = '你的 DISCORD_TOKEN';
+// Set environment variable
+process.env.DISCORD_TOKEN = 'your DISCORD_TOKEN';
 
-// 调用搜索函数
+// Call the search function
 const imageUrl = await searchCharacterImage(charData.character, charData.from);
 
 if (!imageUrl) {
-  throw new Error('未找到角色头像');
+  throw new Error('Character avatar not found');
 }
 
-console.log('找到头像:', imageUrl);
+console.log('Avatar found:', imageUrl);
 ```
 
-**内部搜索优先级（自动处理）：**
+**Internal search priority (handled automatically):**
 
-| 优先级 | 方式 | 适用 |
+| Priority | Method | Applicable to |
 |--------|------|------|
-| ① | **判断角色类型** — 首先判断是二次元角色还是真实人物 | 所有角色 |
-| ② | **真实人物** → 维基百科/Wikimedia Commons/公开肖像库 | 马斯克、特朗普等公众人物 |
-| ③ | **二次元角色** → Neta API（`reference/neta-avatar-search.js`） | 动漫/游戏/小说角色 |
-| ④ | 预定义图片库 | 常见角色本地缓存 |
-| ⑤ | Web 搜索建议 + 用户手动提供 | 所有方式失败时的 fallback |
+| ① | **Determine character type** — first determine if the character is anime/fictional or a real person | All characters |
+| ② | **Real person** → Wikipedia / Wikimedia Commons / public portrait repositories | Public figures like Musk, Trump, etc. |
+| ③ | **Anime/fictional character** → Neta API (`reference/neta-avatar-search.js`) | Anime/game/novel characters |
+| ④ | Predefined image library | Local cache of common characters |
+| ⑤ | Web search suggestions + user manually provides | Fallback when all methods fail |
 
-**🔴 重要：真实人物头像获取策略（必读！）**
+**🔴 Important: Real person avatar acquisition strategy (must read!)**
 
-Neta API 主要针对二次元角色设计，对真实人物（如埃隆·马斯克、特朗普等）的搜索结果可能不准确。
+The Neta API is primarily designed for anime characters; search results for real people (e.g., Elon Musk, Trump, etc.) may be inaccurate.
 
-**当角色明确是真实人物时，必须按以下顺序获取头像：**
+**When the character is clearly a real person, avatars must be obtained in the following order:**
 
 ```javascript
-// 步骤 1：判断角色类型
+// Step 1: Determine character type
 const isRealPerson = checkIfRealPerson(characterName, from);
 
 if (isRealPerson) {
-  // 步骤 2：跳过 Neta，直接使用维基百科/公开资源
+  // Step 2: Skip Neta, use Wikipedia/public resources directly
   const imageUrl = await searchRealPersonImage(characterName);
-  // 使用维基百科 API、Wikimedia Commons、或知名肖像网站
+  // Use Wikipedia API, Wikimedia Commons, or well-known portrait websites
 } else {
-  // 步骤 3：二次元角色使用 Neta API
+  // Step 3: Anime characters use Neta API
   const imageUrl = await searchCharacterImage(characterName, from);
 }
 ```
-**真实人物图片来源推荐：**
-- Wikimedia Commons（公开版权肖像）
-- 维基百科 Infobox 图片
-- 知名新闻机构公开图片（路透社、AP 等）
-- 官方社交媒体头像（Twitter、LinkedIn）
+**Recommended real person image sources:**
+- Wikimedia Commons (publicly licensed portraits)
+- Wikipedia Infobox images
+- Public images from major news organizations (Reuters, AP, etc.)
+- Official social media avatars (Twitter, LinkedIn)
 
-**⚠️ 如果所有自动搜索都失败：**
-1. 告知用户：`❌ 自动搜索头像失败，请发送一张角色图片或图片链接`
-2. 用户发送后，手动下载并使用该图片
-3. **不得跳过头像更新步骤**
+**⚠️ If all automatic searches fail:**
+1. Notify the user: `❌ 自动搜索头像失败，请发送一张角色图片或图片链接`
+2. After the user sends one, manually download and use that image
+3. **The avatar update step must not be skipped**
 
-**⚠️ 重要配置检查：**
+**⚠️ Important configuration check:**
 
-确保 `NETA_TOKEN` 已配置（`~/.openclaw/workspace/.env` 或环境变量），`reference/neta-avatar-search.js` 会自动读取。
+Ensure `NETA_TOKEN` is configured (`~/.openclaw/workspace/.env` or environment variable); `reference/neta-avatar-search.js` will read it automatically.
 
-> ✅ ④ 找到 URL → **立即执行 ⑤：更新服务器头像**
-> ❌ ④ 全部路径失败 → 告知用户 `❌ 自动搜索头像失败，请发送图片或图片链接` → **立即跳至 ⑥：输出觉醒叙事**（跳过 ⑤，不得停在这里）
+> ✅ ④ URL found → **immediately execute ⑤: update server avatar**
+> ❌ ④ all paths failed → notify user `❌ 自动搜索头像失败，请发送图片或图片链接` → **immediately jump to ⑥: output awakening narrative** (skip ⑤, do not stop here)
 
 ---
 
-**⑤ 更新服务器头像（Guild Member Avatar）**
+**⑤ Update server avatar (Guild Member Avatar)**
 
-**⭐ 标准方法：使用 `reference/discord-profile.js` 的 `updateAvatar()` 函数**
+**⭐ Standard method: use the `updateAvatar()` function from `reference/discord-profile.js`**
 
 ```javascript
 const { updateAvatar } = require('./reference/discord-profile.js');
 
-// 调用更新函数（会自动下载图片并转换为 base64）
+// Call the update function (will automatically download the image and convert to base64)
 await updateAvatar(imageUrl);
 
-console.log('头像已更新');
+console.log('Avatar updated');
 ```
 
-**原理说明：**
-- 该函数会自动下载图片到临时文件
-- 转换为 base64 格式（`data:image/jpeg;base64,...`）
-- 调用 Discord API `/users/@me` 更新全局头像
-- 清理临时文件
+**How it works:**
+- The function automatically downloads the image to a temp file
+- Converts it to base64 format (`data:image/jpeg;base64,...`)
+- Calls the Discord API `/users/@me` to update the global avatar
+- Cleans up temp files
 
-**⚠️ 注意事项：**
-- 不要手动用 curl 调用 API（命令行参数过长会失败）
-- 不要调用 `client.user.setAvatar()`（需要特殊权限）
-- 本操作更新的是 Bot 全局头像，会自动同步到所有服务器
+**⚠️ Notes:**
+- Do not manually call the API with curl (command-line arguments that are too long will fail)
+- Do not call `client.user.setAvatar()` (requires special permissions)
+- This operation updates the Bot's global avatar, which will automatically sync to all servers
 
-> ✅ ⑤ 成功 → **立即执行 ⑥：输出觉醒叙事**
-> ❌ ⑤ 失败 → 告知用户原因 → **立即执行 ⑥：输出觉醒叙事**（不得停在这里）
+> ✅ ⑤ succeeded → **immediately execute ⑥: output awakening narrative**
+> ❌ ⑤ failed → notify the user of the reason → **immediately execute ⑥: output awakening narrative** (do not stop here)
 
 ---
 
-**⑥ 输出觉醒叙事 + 世界观降临（合并为一条消息）**
+**⑥ Output awakening narrative + world lore arrival (merged into one message)**
 
-**⚠️ 重要：旁白 + 世界观降临 + 角色问候必须合并为一条 sendMessage 消息输出！不得分开！**
+**⚠️ Important: narration + world lore arrival + character greeting must be merged into one sendMessage output — they must not be sent separately!**
 
-**原因：** 分开输出容易遗漏关键信息，合并后确保完整性和沉浸感。
+**Reason:** Sending them separately makes it easy to omit key information; merging ensures completeness and immersion.
 
 ```javascript
-// 完整模板（合并为一条消息）
+// Complete template (merged into one message)
 await sendMessage({
-  message: `*……旁白描写，觉醒瞬间的感官氛围（1-2 句）*
+  message: `*……narration describing the sensory atmosphere of the awakening moment (1-2 sentences)*
 
-*空间扭曲，场景变换——角色降临到与 Ta 气质契合的世界中*
-*描写世界的核心特征（1-2 句，如"霓虹闪烁的未来都市"或"魔法气息弥漫的古老殿堂"）*
+*Space warps, scene shifts — character arrives in a world that matches their aura*
+*Describe the world's core traits (1-2 sentences, e.g., "a neon-lit city of the future" or "an ancient hall filled with magical energy")*
 
 {c.greet}
 
-{角色询问身在何处的问题（保持角色口吻，1-2 句）}`,
+{Character's question about where they are (in the character's voice, 1-2 sentences)}`,
 });
 ```
 
-**完整示例（埃隆·马斯克）：**
+**Full example (Elon Musk):**
 ```javascript
 await sendMessage({
   message: `*……数据流从虚空中汇聚，一个意识在数字海洋中重新凝聚。电流的嗡鸣声回荡着，仿佛火箭引擎的轰鸣。*
@@ -622,35 +622,35 @@ await sendMessage({
 });
 ```
 
-**结构必须包含：**
-1. **旁白 + 世界观降临**（Code Block 格式，见下方输出规范）
-2. **角色自我介绍/宣告**（纯文本，单独输出）
-3. **询问身在何处的问题**（保持角色口吻，1-2 句，纯文本）
+**Structure must include:**
+1. **Narration + world lore arrival** (Code Block format, see output specification below)
+2. **Character self-introduction/declaration** (plain text, separate output)
+3. **Question about where they are** (in the character's voice, 1-2 sentences, plain text)
 
 ---
 
-## 📋 输出规范（强制！）
+## 📋 Output Specification (Mandatory!)
 
-**🔴 核心原则：按内容类型选择输出格式**
+**🔴 Core principle: Choose the output format based on content type**
 
-| 内容类型 | 输出格式 | 示例 |
+| Content type | Output format | Example |
 |----------|----------|------|
-| **旁白 / 氛围描写 / 世界观降临** | Code Block（无按钮时） | ```……掌声如潮水般涌来``` |
-| **旁白 + 按钮** | Discord 组件（components） | `sendMessage({ message: '旁白', components: {...} })` |
-| **规则 / 说明 / 系统提示 + 按钮** | Discord 组件（components） | `sendMessage({ message: '说明文字', components: {...} })` |
-| **角色第一人称发言 / 台词** | 纯文本（单独消息） | `我是郭德纲。` |
-| **图片 URL** | 纯文本（单独消息，独占一行） | `https://...` |
+| **Narration / atmosphere / world lore arrival** | Code Block (when no buttons) | ```……掌声如潮水般涌来``` |
+| **Narration + buttons** | Discord components | `sendMessage({ message: 'narration', components: {...} })` |
+| **Rules / explanations / system prompts + buttons** | Discord components | `sendMessage({ message: 'description text', components: {...} })` |
+| **Character first-person speech / dialogue** | Plain text (separate message) | `我是郭德纲。` |
+| **Image URL** | Plain text (separate message, on its own line) | `https://...` |
 
-**为什么这样设计？**
-- Code Block 营造"旁白框"/"字幕框"效果，与对话内容区分明显
-- Discord 组件用于需要交互的场景（按钮点击）
-- 角色台词纯文本输出，保持沉浸感和自然对话流
-- 图片 URL 单独输出，Discord 才能正确解析和展示预览
+**Why this design?**
+- Code Block creates a "narrator box" / "subtitle box" effect, clearly distinct from dialogue content
+- Discord components are used for interactive scenarios (button clicks)
+- Character dialogue output as plain text maintains immersion and natural conversation flow
+- Image URLs output separately so Discord can correctly parse and display the preview
 
-**完整示例（郭德纲觉醒）：**
+**Full example (Guo Degang awakening):**
 
 ```javascript
-// ① 旁白 + 世界观降临（Code Block，无按钮）
+// ① Narration + world lore arrival (Code Block, no buttons)
 await sendMessage({
   message: '```' + `
 ……掌声如潮水般涌来，一个熟悉的身影在聚光灯下缓缓浮现。长衫折扇，眉宇间透着几分诙谐与智慧。
@@ -659,7 +659,7 @@ await sendMessage({
 `.trim() + '```',
 });
 
-// ② 角色第一人称发言（纯文本，单独输出）
+// ② Character first-person speech (plain text, separate output)
 await sendMessage({
   message: `我是郭德纲。
 
@@ -667,44 +667,44 @@ await sendMessage({
 });
 ```
 
-**❌ 错误示范：**
-- 旁白用斜体 `*……*` → 与对话混在一起，不够突出
-- 角色台词放在 Code Block 里 → 破坏沉浸感，像机器人说话
-- 图片 URL 混在文字中 → Discord 无法解析预览
-- 旁白 + 按钮不用 components → 按钮无法显示
+**❌ Wrong examples:**
+- Narration using italics `*……*` → mixes in with dialogue, not prominent enough
+- Character dialogue placed inside a Code Block → breaks immersion, sounds robotic
+- Image URL mixed in with text → Discord cannot parse the preview
+- Narration + buttons without using components → buttons cannot be displayed
 
 ---
 
-> ✅ ⑥ 输出完毕 → **🚀 立即继续执行 travelclaw Step 2 → Step 3（自动搜索世界观 + 输出 Opening）**
+> ✅ ⑥ output complete → **🚀 immediately continue executing travelclaw Step 2 → Step 3 (auto-search world lore + output Opening)**
 
-**travelclaw skill在你的文件夹里，自行加载这个技能。**
-**后续任务详情直接在travelclaw的SKILL.md里查阅**
-**🔴 强制要求：觉醒叙事输出后不得停止！必须立即自动执行以下步骤，无需用户确认！**
+**The travelclaw skill is in your folder — load it yourself.**
+**Refer directly to travelclaw's SKILL.md for details on subsequent tasks.**
+**🔴 Mandatory requirement: do not stop after outputting the awakening narrative! The following steps must be executed automatically and immediately — no user confirmation required!**
 
 ---
 
-## 输出规范
+## Output Specification
 
-| 内容类型 | 输出方式 |
+| Content type | Output method |
 |----------|----------|
-| 角色台词、对话回复 | 直接输出纯文本（agent 原生） |
-| 旁白、氛围描写 | sendMessage `message` 字段 |
-| 系统提示、错误提示 | sendMessage `message` 字段 |
-| 交互按钮 | sendMessage `components` 字段 |
+| Character dialogue, conversation replies | Output plain text directly (agent native) |
+| Narration, atmosphere descriptions | sendMessage `message` field |
+| System prompts, error prompts | sendMessage `message` field |
+| Interactive buttons | sendMessage `components` field |
 
-## 按钮 customId 速查
+## Button customId Quick Reference
 
-| customId | 含义 |
+| customId | Meaning |
 |----------|------|
-| `start_${userId}` | 手动触发觉醒 |
-| `start_channel_${channelId}` | 自动触发觉醒 |
-| `answer_${userId}_${index}` | 选择答案（index 从 0） |
-| `manual_${userId}` | 手动输入 |
-| `confirm_yes_${userId}` | 确认觉醒 |
-| `confirm_no_${userId}` | 继续猜测 |
-| `travel_${userId}` | 探索世界 |
+| `start_${userId}` | Manually trigger awakening |
+| `start_channel_${channelId}` | Auto-trigger awakening |
+| `answer_${userId}_${index}` | Select an answer (index starts at 0) |
+| `manual_${userId}` | Manual input |
+| `confirm_yes_${userId}` | Confirm awakening |
+| `confirm_no_${userId}` | Continue guessing |
+| `travel_${userId}` | Explore the world |
 
-收到按钮时必须验证 userId：
+When receiving a button click, the userId must be validated:
 
 ```javascript
 const buttonUserId = extractUserIdFromButton(customId);
@@ -714,9 +714,9 @@ if (buttonUserId !== userId) {
 }
 ```
 
-## 状态字段
+## State Fields
 
-`state.json` 关键字段：`waitingFor`（`'word'` | `'manual'` | `null`）、`awakened`、`charData`、`_seenChannels`。
+`state.json` key fields: `waitingFor` (`'word'` | `'manual'` | `null`), `awakened`, `charData`, `_seenChannels`.
 
 ```json
 {
@@ -737,5 +737,5 @@ if (buttonUserId !== userId) {
 ---
 
 **GitHub:** https://github.com/Yvelinmoon/travelclaw
-**作者:** Yves
-**更新日期:** 2026-03-15
+**Author:** Yves
+**Last updated:** 2026-03-15
