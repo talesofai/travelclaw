@@ -1,6 +1,10 @@
 # travelclaw
 
-Two chained skills for OpenClaw: **awaken** a character identity on Discord, then **travel** the Neta universe as that character.
+A Discord game where users pick any character — real or fictional — and the bot **becomes** that character, then takes them on an auto-generated journey through the Neta universe, producing AI illustrations at each stop.
+
+The game runs entirely inside Discord and **auto-starts** when the bot is added to a private channel. No commands needed — it wakes up, asks who the user wants it to become, and starts playing.
+
+> **Agent note:** This README is the full cold-start guide. You do not need to scan `SKILL.md` files to begin — read this top to bottom and you are ready to run both skills.
 
 ---
 
