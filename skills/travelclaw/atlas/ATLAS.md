@@ -1,142 +1,74 @@
-# Atlas — 旅行图鉴
+# Atlas — Travel Gallery Generator
 
-> 本文件由 travelclaw 主流程在用户触发「生成图鉴」时调用，不自动执行。
-
----
-
-## 触发条件
-
-当用户说「生成图鉴」/「看图鉴」/「相册」/「html」时，从主流程跳转至此。
-
-执行本流程前，确认以下数据已在会话中存在：
-- `character_name` — 角色名
-- `world_name` — 本次旅行所在世界
-- 至少 1 站的旅行记录（`destination_name` + `image_url` + `collection_uuid`）
+> Called from the travelclaw main flow when the user triggers "generate atlas". Not auto-executed.
 
 ---
 
-## 询问风格偏好
+## Trigger
 
-触发后先询问用户想要什么风格：
-```
-想要什么风格的图鉴？（直接跳过用默认地图风格）
-例如：复古胶片 / 星空主题 / 像素游戏 / 极简白底...
-```
+When the user says "generate atlas" / "view album" / "show gallery" / "html", jump here from the main flow.
 
-若用户跳过或未输入，默认使用**互动地图风格**。
-
----
-
-## 默认风格：互动地图
-
-自由生成一张可交互的世界地图页面：
-- 以 `world_name` 的风格基调设计地图背景（手绘羊皮纸、星图、像素地图等）
-- 每站旅行图片作为地图上的「地标点」，按探索顺序分布
-- 点击任意地标，弹出放大原图 + 目的地名称 + 玩法链接 + 站次信息
-- 整体氛围与角色气质及所在世界匹配
-
-### 推荐风格模板
-
-**🎮 像素游戏风**
-- 8-bit / 16-bit 像素艺术风格
-- 地图设计成复古游戏世界地图
-- 地标点设计为像素图标（旗帜、宝箱、传送门）
-- 弹窗使用游戏对话框样式
-- 字体使用像素字体
-- 配色参考经典 RPG 游戏（塞尔达、最终幻想等）
-- 适合：游戏角色、二次元角色、轻松趣味旅程
-
-**🌟 星空宇宙风**
-- 深邃星空背景，点缀星座连线
-- 地标点设计为发光星球或星座节点
-- 轨迹线如星轨般连接各站
-- 弹窗使用半透明玻璃质感
-- 配色：深蓝、紫、金色点缀
-- 适合：科幻角色、太空主题、宏大叙事旅程
-
-**📜 复古手账风**
-- 仿旧纸张纹理背景
-- 手绘风格地图插画
-- 地标点设计为印章、贴纸效果
-- 弹窗使用便签纸/卡片样式
-- 添加手绘箭头、涂鸦装饰
-- 配色：暖黄、棕褐、墨绿
-- 适合：文艺角色、日常旅行、温馨回忆
-
-**⚡ 赛博科技风**
-- 霓虹网格背景，科技感 UI
-- 地标点设计为发光节点/电路点
-- 轨迹线如数据流般流动
-- 弹窗使用全息投影效果
-- 配色：青蓝、品红、黑色背景
-- 适合：科幻角色、未来世界、高科技主题
-
-**🎨 精致插画风**
-- 高质量手绘插画背景
-- 地标点设计为精美徽章/纹章
-- 轨迹线如丝带般优雅
-- 弹窗使用卡片式设计，带阴影和圆角
-- 添加装饰性边框、花纹
-- 配色根据角色印象色定制
-- 适合：优雅角色、奇幻世界、视觉系旅程
-
-**🧸 趣味卡通风**
-- 明亮活泼的卡通风格
-- 地标点设计为可爱图标（星星、爱心、云朵）
-- 轨迹线如彩虹般多彩
-- 弹窗使用气泡对话框样式
-- 添加动画效果（弹跳、闪烁）
-- 配色：高饱和度、多彩
-- 适合：可爱角色、轻松日常、欢乐旅程
+Before running, confirm the following data exists in the session:
+- `character_name` — character name
+- `world_name` — current travel world
+- At least 1 stop's travel record (`destination_name` + `image_url` + `collection_uuid`)
 
 ---
 
-**风格选择建议：**
-- 优先匹配角色气质（如马斯克→赛博科技/星空，可莉→像素游戏/趣味卡通）
-- 考虑世界观基调（奇幻→复古手账/精致插画，科幻→赛博科技/星空）
-- 用户可指定关键词，如「想要更游戏化的感觉」「做成像素风格」
+## Ask for style preference
+
+After triggering, ask the user what style they want:
+
+> "Which style would you like for your travel atlas?"
+> A) Minimalist — clean white, focused on images
+> B) Story — dark background, narrative captions
+> C) Magazine — grid layout, editorial feel
 
 ---
 
-## 用户自定义风格
+## Generate HTML atlas
 
-若用户指定了风格，自由发挥设计：
-- 不限于地图形式，可以是画廊、卡片墙、时间轴、杂志版式等
-- 保留**点击图片弹出放大原图 + 更多信息**的交互
-- 风格描述越具体，页面越贴合
+Based on their choice, generate a self-contained HTML file with:
+
+- Character name + world as header
+- All visited stops as image cards with captions
+- Each card: destination name, scene image, stop number
+- Link to the Neta collection URL for each stop
+- Responsive grid layout
+
+**Template structure:**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>{character_name} × {world_name} — Travel Atlas</title>
+  <style>/* style per selected theme */</style>
+</head>
+<body>
+  <header>
+    <h1>{character_name}</h1>
+    <p>{world_name} · {stop_count} stops · {date}</p>
+  </header>
+  <main class="grid">
+    <!-- one card per stop -->
+    <div class="card">
+      <img src="{image_url}" alt="{destination_name}"/>
+      <div class="caption">
+        <span class="num">Stop {n}</span>
+        <strong>{destination_name}</strong>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
+```
 
 ---
 
-## 保存与分享
+## Output
 
-将 HTML 保存到：
-```
-~/.openclaw/workspace/pages/travel_{character_name}_{date}.html
-```
-
-**生成完毕后，先询问用户的用户名以生成完整分享链接：**
-```
-📖 {character_name} 的旅行图鉴已封存！
-
-你的 pages 用户名是什么？（用于生成分享链接）
-格式：https://claw-{你的用户名}-pages.talesofai.com
-```
-
-用户输入用户名后，输出完整链接（单独一行，Discord 直接展开预览）：
-```
-🔗 https://claw-{username}-pages.talesofai.com/travel_{character_name}_{date}.html
-```
-
-> 若用户在本次会话中已提供过用户名，直接复用，无需再次询问。
-
----
-
-## 迭代修改
-
-生成后鼓励用户继续定制：
-```
-想换个风格？告诉我关键词，马上重新生成 ✨
-例如：更暗黑一点 / 加上动画效果 / 改成横版时间轴...
-```
-
-用户每次提出修改，重新生成 HTML 并覆盖原文件，再次输出最新分享链接（用户名已知则直接输出，无需再问）。
+1. Save the HTML to `/tmp/{character_name}_atlas_{timestamp}.html`
+2. Output the file path as plain text
+3. If a tunnel is available, serve via `python3 -m http.server` + `cloudflared` for a public URL

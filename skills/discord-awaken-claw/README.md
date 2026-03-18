@@ -1,120 +1,89 @@
-# 🦞 龙虾宝宝觉醒技能
+# discord-awaken-claw
 
-一个完整的 Discord 角色觉醒技能，通过问答→猜测→确认→觉醒→角色扮演的完整流程，让 Bot 变成用户心中的角色。
-<img width="2486" height="1584" alt="image" src="https://github.com/user-attachments/assets/fe88badc-4074-44f9-be59-3947c892aa4e" />
+A Discord character awakening skill for OpenClaw. Guides users through a question-and-answer flow to identify a fictional character, then transforms the bot into that character by updating its avatar, server nickname, and SOUL.md. After awakening, automatically transitions into travelclaw.
 
-
----
-
-## ✨ 特性
-
-- 🎮 **完整觉醒流程** - 从初始词到角色扮演的无缝体验
-- 🤖 **LLM 智能追问** - 动态生成问题和选项，2-3 轮即可猜中
-- 🎨 **自动更新资料** - soul.md、Discord 昵称、头像一键更新
-- 🔄 **混合交互** - 按钮选择 + @Bot 文字输入，流畅自然
+**No neta-skills dependency** — portrait search uses the Neta TCP API directly.
 
 ---
 
-## 🚀 快速开始
+## Quick start
 
-### 1. 克隆仓库
+### 1. Install dependencies
 
 ```bash
-cd /home/node/.openclaw/workspace/skills
-git clone https://github.com/Yvelinmoon/discord-awaken-claw-new.git awakening
-cd awakening
+cd skills/discord-awaken-claw/reference
+npm install
 ```
 
-### 2. 配置环境变量
+### 2. Set environment variables
 
 ```bash
-cd reference
-cp .env.example .env
-# 编辑 .env 填入你的 DISCORD_TOKEN、DISCORD_GUILD_ID 和 NETA_TOKEN
+# Required
+export DISCORD_TOKEN="your-bot-token"
+export DISCORD_GUILD_ID="your-server-id"
+
+# For portrait search (or add to ~/.openclaw/workspace/.env)
+export NETA_TOKEN="your-neta-token"
 ```
 
-### 3. 安装依赖
+### 3. Start the channel listener
 
 ```bash
-cd reference
-pnpm install
-# 或 npm install
+cd skills/discord-awaken-claw
+nohup node reference/channel-listener.js > reference/channel-listener.log 2>&1 &
 ```
 
-### 4. 集成到 OpenClaw
+### 4. Trigger in Discord
 
-在 OpenClaw 主 agent 中导入并使用：
-
-```javascript
-const handler = require('./skills/awakening/reference/direct-handler.js');
-
-const handled = await handler.handleDiscordMessage({
-  userId: message.author.id,
-  channelId: message.channel.id,
-  guildId: message.guild?.id,
-  content: message.content,
-  customId: message.interaction?.customId,
-  interactionType: message.interaction ? 'button' : 'message',
-  sendMessage: async (payload) => {
-    return await message.channel.send(payload);
-  },
-}, async (prompt, systemPrompt) => {
-  const result = await callLLM(prompt, systemPrompt);
-  return result;
-});
-```
-
-### 5. 测试觉醒
-
-在 Discord 中输入 `@Bot 开始觉醒`
+Send `@Bot start awakening` in any channel.
 
 ---
 
-## 📖 详细文档
-
-- **[SKILL.md](./SKILL.md)** - Agent 技能规范（详细工作流程）
-- **[DEPLOY.md](./DEPLOY.md)** - 部署指南和故障排查
-
----
-
-## 🎮 使用示例
+## How it works
 
 ```
-用户：/awakening
+User: "@Bot start awakening"
+Bot: ○ Lobster Hatchling · waiting to hatch …  [I've decided]
 
-Bot: ○ 龙虾宝宝 · 等待破壳中
-     [◎ 我已想好]
+User: [clicks button] → types "blonde American president"
 
-用户：[点击按钮] → 输入"金发的美国总统" → 选择"真实人物"
+Bot: ## 🇺🇸 Donald Trump
+     *45th President of the United States*
+     [◎ Yes, that's them — hatch!]  [✗ No, keep sensing]
 
-Bot: ## 🇺🇸 唐纳德·特朗普
-     [◎ 就是他/她，请破壳]
+User: [confirms]
 
-用户：[点击确认]
-
-Bot: 我是唐纳德·特朗普，美国第 45 任总统。
+Bot: *…a familiar silhouette emerges under the spotlight…*
+     I'm Donald Trump. Where am I?
 ```
 
 ---
 
-## 📁 文件结构
+## File structure
 
 ```
-awakening/
-├── SKILL.md                # 技能文档（Agent 必读）
-├── README.md               # 人类快速开始指南
-├── DEPLOY.md               # 部署指南
-└── reference/              # 核心代码和配置
-    ├── direct-handler.js   # 主处理器（核心逻辑）
-    ├── discord-profile.js  # Discord 资料更新
-    ├── package.json        # 依赖配置
-    └── state.json          # 运行时状态存储（自动生成）
+discord-awaken-claw/
+├── SKILL.md                      # Agent skill spec (full workflow)
+├── README.md                     # This file
+├── openclaw-integration.js       # Main agent integration module
+├── update-profile.js             # Standalone profile update script
+└── reference/
+    ├── direct-handler.js         # Core awakening logic
+    ├── channel-listener.js       # Discord event listener (run via nohup)
+    ├── discord-profile.js        # Nickname + avatar update via Discord API
+    ├── neta-avatar-search.js     # Portrait search via Neta TCP API (no neta-skills)
+    ├── llm_judge.js              # LLM prompt helpers
+    ├── package.json              # Dependencies (discord.js, dotenv)
+    └── state.json                # Runtime state (auto-generated)
 ```
 
 ---
 
-## 📄 许可证
+## Portrait search (no neta-skills required)
 
-MIT License
+`neta-avatar-search.js` calls the Neta TCP API directly using the same approach as `travel.js adopt`:
 
-**GitHub:** https://github.com/Yvelinmoon/discord-awaken-claw-new
+1. `/v2/travel/parent-search` — find character UUID by name
+2. `/v1/home/feed/interactive?oc_uuid=...` — get portrait `picture/UUID.webp` URL
+
+The portrait URL is saved to SOUL.md's `形象图片` field, which travelclaw reads to supply the `picture_uuid` for image generation.
