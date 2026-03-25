@@ -8,7 +8,7 @@
  *   node travel.js gen <char_name> <pic_uuid> <uuid>  → {scene, status, url, collection_uuid}
  *
  * suggest priority: scenes.json (local, tag-scored) → online API fallback
- * API: https://api.talesofai.cn
+ * API: https://api.talesofai.com (override via NETA_API_BASE_URL env)
  * Token resolved from: NETA_TOKEN env → ~/.openclaw/workspace/.env → clawhouse .env
  */
 
@@ -18,7 +18,7 @@ import { resolve } from 'node:path';
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
-const BASE = process.env.NETA_API_URL ?? 'https://api.talesofai.cn';
+const BASE = process.env.NETA_API_BASE_URL ?? process.env.NETA_API_URL ?? 'https://api.talesofai.com';
 
 function getToken() {
   if (process.env.NETA_TOKEN) return process.env.NETA_TOKEN;
