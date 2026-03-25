@@ -18,7 +18,7 @@ import { resolve } from 'node:path';
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
-const BASE = 'https://api.talesofai.cn';
+const BASE = process.env.NETA_API_URL ?? 'https://api.talesofai.cn';
 
 function getToken() {
   if (process.env.NETA_TOKEN) return process.env.NETA_TOKEN;

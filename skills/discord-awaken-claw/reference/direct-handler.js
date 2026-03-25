@@ -250,8 +250,8 @@ async function handleChannelCreate(event, sendMessage, channel, botId) {
   if (hasSeenChannel(channelId)) return;
   markChannelSeen(channelId);
 
-  // Language detection based on NETA_BASE_URL
-  const netaBaseUrl = process.env.NETA_BASE_URL || 'https://api.talesofai.com';
+  // Language detection based on NETA_API_URL (falls back to NETA_BASE_URL for backwards compat)
+  const netaBaseUrl = process.env.NETA_API_URL ?? process.env.NETA_BASE_URL ?? 'https://api.talesofai.cn';
   const isEnglish = netaBaseUrl.endsWith('.com');
 
   // Resolve the target user to @mention
