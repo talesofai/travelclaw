@@ -250,8 +250,8 @@ async function handleChannelCreate(event, sendMessage, channel, botId) {
   if (hasSeenChannel(channelId)) return;
   markChannelSeen(channelId);
 
-  // Language detection based on NETA_API_BASE_URL (official neta-skills env var)
-  const netaBaseUrl = process.env.NETA_API_BASE_URL ?? process.env.NETA_API_URL ?? process.env.NETA_BASE_URL ?? 'https://api.talesofai.com';
+  // Language detection based on NETA_API_BASE_URL
+  const netaBaseUrl = process.env.NETA_API_BASE_URL || 'https://api.talesofai.com';
   const isEnglish = netaBaseUrl.endsWith('.com');
 
   // Resolve the target user to @mention
@@ -293,7 +293,7 @@ async function handleChannelCreate(event, sendMessage, channel, botId) {
     await sendMessage({
       message: `**Lobster Baby is sleeping** 💤
 
-@me and send "**start awakening**" to wake me...
+@Lobster Baby and send "**start awakening**" to wake me...
 
 ...
 
@@ -303,7 +303,7 @@ ${mentionText}I'm waiting for you.`,
     await sendMessage({
       message: `**龙虾宝宝正在沉睡** 💤
 
-@我并发送 "**开始觉醒**" 唤醒我...
+@龙虾宝宝并发送 "**开始觉醒**" 唤醒我...
 
 ...
 
@@ -486,7 +486,7 @@ async function showReveal(userId, charData, sendMessage) {
   await sleep(1000);
 
   await sendMessage({
-    message: `-# The shrimp senses it
+    message: `-# The lobster baby senses it
 
 ## ${charData.emoji}  ${charData.character}
 *${charData.from}*
