@@ -154,7 +154,7 @@ description: Triggered directly after the awakening flow in which the lobster ba
 **When to execute:** Immediately, when this skill is loaded. This is travelclaw's **first action** (on first trigger).
 
 **Core principle: This is the character's behavior, not a system task. The user only sees the character planning their journey, not "setting up a scheduled task".**
-
+**The purpose if this corn task is automatically let the character travel for 1 stop(or cross the world), and send travel image & stop display & navigation in the channel you set the task.**
 ---
 
 ### 🔴 Four-Step Flow (Strict Order, No Skipping)
@@ -261,6 +261,13 @@ channelState.cronJobIds = [`auto-travel-am-${channelId}`, `auto-travel-pm-${chan
 fs.writeFileSync(stateFile, JSON.stringify(travelState, null, 2));
 ```
 **You must complete this step thoroughly before proceeding to the next stage of the process.**
+
+### Critical! Everytime when execute the corn task, remember read travel-state.json at first:
+**Channel**Send your corn task result to the channel you have set (Read channel ID from travel-state.json)
+**Context**When executing the task, remember read your channel conversation first -- Each stop on the journey is not isolated; it is a continuation of the ongoing trip.(Read travel records from travel-state.json)
+**World crossing**If you discover that all 5 stops of the current world have been fully explored while executing the cron scheduled task,automatically discover a new world and explore one stop in it.
+
+
 ---
 
 
@@ -286,7 +293,7 @@ From SOUL.md extract:
 **Requirements：**
 1. **MUST directly use real cultural/historical/IP story（films,animations,TV series） sources, DO NOT COMBINE OR MAKEUP worldviews**
 2. **MUST be a COHERENT, COMPLETE worldview**
-3. **Goal** Create contrast or dramatic effect with the character. Select a world that feels surprising or displaced for this character.
+3. **Goal** Create contrast or dramatic effect with the character. Select a world that feels surprising or displaced for this character(The World you select MUST depend on the character setting).
 4. **Diversity** You should generate diverse and authentic worldviews to the fullest extent.Every worldview you create must possess a distinct, concrete art style and cultural identity.
 
 **For example**
@@ -327,8 +334,6 @@ await sendMessage({
 *The fabric of reality shifts...*
 *$character_name resonates with the essence of* **${world_name}**
 
-\`▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\` **Match Found**
-
 ---
 
 ## 【World Unveiled】
@@ -356,8 +361,6 @@ await sendMessage({
 ## 【灵魂频率扫描】
 *现实的结构正在波动...*
 *${character_name} 与 ${world_name} 的本质产生共鸣*
-
-\`▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\` **匹配成功**
 
 ---
 
@@ -515,7 +518,8 @@ fs.writeFileSync(stateFile, JSON.stringify(travelState, null, 2));
 ### Step 5 · Cross the world
 **If you cross the world，return to step2 and step3, explore a new worldview and show the opening.**
 **If you have already received a specific worldview from the user, just use it, and show the opening.**
-
+**If you discover that all 5 stops of the current world have been fully explored while executing the cron scheduled task,automatically discover a new world and explore one stop in it.**
+**Every time you explore 1 new stop or cross a new world, UPDATE travel-state.json!**
 
 ---
 
