@@ -126,8 +126,8 @@ async function main() {
 
   // 2. Find character TCP UUID
   const charQuery = charName.replace(/\s*[（(][^）)]*[）)]/g, '').trim();
-  const search = await api('GET',
-    `/v2/travel/parent-search?keywords=${encodeURIComponent(charQuery)}&parent_type=oc&sort_scheme=exact&page_index=0&page_size=1`);
+  // 先尝试搜索 character 类型（最可能匹配已创建的角色）
+  const search = await api('GET',`/v2/travel/parent-search?keywords=${encodeURIComponent(charQuery)}&parent_type=both&sort_scheme=best&page_index=0&page_size=5`);
   const char = search.list?.find(r => r.type === 'oc');
   log(`🔎 Character: ${char ? `${char.name} (${char.uuid})` : 'Not found, using freetext'}`);
 
