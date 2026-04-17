@@ -17,13 +17,28 @@ description: Triggered directly after the awakening flow in which the lobster ba
 | Scenario | Entry Point |
 |----------|-------------|
 | Post-awakening | awaken-claw skill complete → **🕰️ Cron Setup** → after steps |
-| Cron scheduled | Auto-trigger (cron already configured, goes directly to Step3 or Step 4) |
+| Cron scheduled | Auto-trigger (cron already configured, goes directly to Step 3 or Step 4) |
 | User-initiated | User says "start travel" / "go explore" or any other similar user input → **Step 1 → 🕰️ Cron Setup → Step 2** → Step 3 (Opening) → Step 4 |
 
 ---
 
 ## 🔁 Step Check Logic (execute at each step transition, Silently)
 **ATTENTION** When the skill is triggered, Before you excute anything, read the check logic first!
+
+**CRITICAL: State Management Rule (Highest Priority)**
+```
+□ **ALWAYS READ travel-state.json FIRST** — regardless of trigger type (cron or manual)
+□ Check channels[channelId] exists → Initialize if not
+□ Extract exploration.visitedWorlds → For world deduplication
+□ Extract exploration.visitedStops → For stop deduplication  
+□ Extract exploration.currentWorldStops → To determine current progress (0-5)
+□ Check if currentWorldStops >= 5 AND trigger is cron → Auto world switch required
+```
+
+**🔴 WRITE RULE (Mandatory):**
+- After EVERY state-changing operation → **IMMEDIATELY WRITE to travel-state.json**
+- Never delay writes, never batch writes
+- Always preserve: visitedWorlds, visitedStops, explorationLog, currentWorldStops
 
 **Before entering ANY step:**
 ```
@@ -42,11 +57,14 @@ description: Triggered directly after the awakening flow in which the lobster ba
 
 **Below are the steps and details you need to check**
 ### Step 0 🕰️ Cron Setup Check - on the first run!
-**Before:** None (starting point)
+**Before:**
+- □ **READ travel-state.json** → Get channelState
+- □ Check channelState.cronConfigured → Skip if true
 **After:**
 - □ Corn taks has been setup correctly.
 - □ Character copy（2 copies） has been sent correctly.
-**Next:** →  → Step 1 read character file
+- □ **WRITE travel-state.json** → Set cronConfigured = true, save cronJobIds
+**Next:** → Step 1 read character file
 
 ### Step 1 Read Character File Check
 **Before:**
@@ -60,6 +78,9 @@ description: Triggered directly after the awakening flow in which the lobster ba
 ### Step 2 Search for Creative Worldview Check
 **Before:**
 - □ Character details confirmed
+- □ **READ travel-state.json** → Get exploration.visitedWorlds for DEDUPLICATION
+- □ Generate world_name → Check against visitedWorlds → Regenerate if duplicate
+- □ IF currentWorldStops >= 5 → Must generate NEW world (auto world switch)
 **After:**
 - □ Loading state output ("The boundaries between dimensions are blurring..." code block)
 - □ LLM worldview generation prompt sent
@@ -68,6 +89,7 @@ description: Triggered directly after the awakening flow in which the lobster ba
 - □ world_count generated (random 100-999)
 - □ Opening message sent (single message, no buttons)
 - □ Format matches template (N E T A   U N I V E R S E heading)
+- □ **WRITE travel-state.json** → Update currentWorld, reset currentWorldStops to 0
 **Next:** → Step 3 setting your stop.
 
 ### Step 3 Exploration and Prompt build Check
@@ -75,22 +97,82 @@ description: Triggered directly after the awakening flow in which the lobster ba
 - □ world_name, world_count, world_description ready
 - □ Opening message sent (single message, no buttons)
 - □ reference/remixes_selected.json or remixes_selected_en.json read (priority)
+- □ **READ travel-state.json** → Get exploration.visitedStops for DEDUPLICATION
 **After:**
-- □ Found an appropriate collection in the reference json file or decide to design the scene/event prompt by yourself.
+- □ Design prompt by yourself.
 - □ build the image gen prompt of this stop.
+- □ Prepared gameplay skill search metadata: world_name, scene_name, tags (independent from the image prompt)
+- □ **WRITE travel-state.json** → Save pendingStopId immediately
 **Next:** → Step 4 (auto-trigger instantly)
 
 ### Step 4 Run travel.js and travel for one stop Check
 **Before:**
-- □ travel-state.json read (check visited_ids)
+- □ **READ travel-state.json** → Check visitedStops, currentWorldStops
 - □ travel.js read (check the script for travelling)
-- □ Got the character and collection detail / image gen prompt ready.
+- □ Got the character and image gen prompt ready.
+- □ Got world_name, scene_name, and tags ready for gameplay skill matching.
 - □ Check which stop it is（5 stops in one world）.
+**Execution:**
+- □ Run travel.js once with `--world`, `--scene`, `--tags` flags → Get imageUrl and matched_skills
 **After:**
-- □ Run travel.js once.
-- □ Already Output stop display and navigation.
-**Next:** → User input / corn task for your next move.
+- □ **WRITE travel-state.json** IMMEDIATELY:
+  - Append stopId to visitedStops
+  - Increment currentWorldStops by 1
+  - Append entry to explorationLog (timestamp, worldName, stopId, imageUrl, triggerType)
+  - Clear pendingStopId
+- □ Output image URL (standalone message)
+**Next:** → Step 5
 
+### Step 5 Request for gameplay skills and show stop display Check
+**Before:**
+- □ Ran travel.js
+- □ Wrote travel-state.json
+- □ Image URL output
+- □ **Parsed travel.js stdout** → Extract `matched_skills` array
+**Execution:**
+- □ Check `matched_skills` from travel.js output (empty array means no match)
+**After:**
+- □ Output stop display and navigation (if `matched_skills` is non-empty, ask user to experience)
+**Next:** → User input / continue exploring
+
+### Step 6 Experience gameplay skill Check
+**🔴 Mandatory Pre-execution Checklist (Non-skippable)**
+
+**Before:**
+- □ User responded positively to the in-character event from Step 5
+- □ Skill info retrieved (name, public URL)
+- □ **(1) Located the skill** via platform skill resolution mechanism (no hardcoded paths)
+- □ **(2) Fully read the skill's SKILL.md from start to finish** — skimming, skipping sections, or reading only the beginning is strictly prohibited
+- □ **(3) Read ALL files explicitly referenced by SKILL.md** (e.g., `reference/`, `scripts/`, `assets/`) — if SKILL.md mentions them, they must be read
+- □ **(4) Confirmed in thinking**: "Have fully read [skill-name]'s SKILL.md" + listed all referenced files read
+- □ **Verified**: Only after completing (1)→(4) are you allowed to output character dialogue and execute
+**Execution:**
+- □ Output character first-person dialogue
+- □ Output skill public URL (standalone message)
+- □ Directly execute the skill strictly according to the read SKILL.md requirements
+**After:**
+- □ Skill execution started
+**Next:** → User input / cron task(auto travel)
+
+### Step 7 Cross the world Check
+**Before:**
+- □ **READ travel-state.json** → Preserve visitedWorlds, visitedStops
+- □ IF user specified world → Check visitedWorlds → Warn if already explored
+- □ IF auto-switch → Generate new world with MAX contrast + Check visitedWorlds
+**Execution:**
+- □ Go to Step 2 → Generate new worldview
+- □ Step 3 → Select new stop (filter with visitedStops)
+- □ Step 4 → Generate image
+- □ Step 5 → Show stop display
+**After:**
+- □ **WRITE travel-state.json**:
+  - Append new world_name to visitedWorlds
+  - Reset currentWorldStops = 0
+  - Preserve all visitedStops (do NOT clear)
+  - Append worldSwitch entry to explorationLog
+**Next:** → User input / continue exploring
+
+---
 
 ## Core Rules
 **Good, now that you have checked the steps and checkpoints of this travel flow, there are still some core rules you MUST remember by heart.**
@@ -147,7 +229,7 @@ description: Triggered directly after the awakening flow in which the lobster ba
 **Great! Be ready for the real travel flow then!**
 **Attention**
 **Execute strictly in order. Output feedback immediately after each step.**
-**REMEMBER, you need to automatically finish the whole flow from step 0 to step 4 -- travel to 1 spot, and wait for your next instruct.**
+**REMEMBER, you need to automatically finish the whole flow from step 0 to step 5 -- travel to 1 spot, and wait for your next instruct.**
 
 ### Step 0 🕰️ Cron Setup — Travel Ritual (Required on First Run)
 
@@ -251,6 +333,7 @@ Now then... let us begin exploring this world.
   - All environment variables (including NETA_TOKEN)
   - Full context (SOUL.md, travel-state.json, character info)
   - Proper timeout handling
+  - **discord channel id** Use the ID of the channel where you triggered the travelclaw skill. 
 
 **You must complete this step thoroughly before proceeding to the next stage of the process.**
 
@@ -314,84 +397,116 @@ A animation character ➡️ cross to the real world / cross to another related 
 
 **The goal:** Make the user go "Wait... what?" in a delightful way. The contrast should be jarring but interesting.
 
-**Art Style Keywords** will be stored and prepended to all image generation prompts in Step 6.
+**Art Style Keywords** will be stored and prepended to all image generation prompts in the exploration steps.
 
 **No API calls needed** - purely LLM-generated creativity.
 
-#### 2-B: Outpput Discord Opening (Single Message, NO Button)
-**Attention: remember to use the same language as the user in the opening output, and use only one language throughout(you need to fully translate the template below).**
+#### 2-B: Output Discord Opening (5 Separate Messages in Code Blocks, NO Buttons)
 
-```javascript
-await sendMessage({
-  message: `\n# N E T A   U N I V E R S E
-
-## 【Coordinates Mapped】
-**Worlds Mapped** \`${world_count}\` | **World Tag** \`${world_name}\`
+**CRITICAL OUTPUT FORMAT:**
+Each of the 5 sections below must be sent as a **separate Discord message wrapped in a code block** (```). Do not combine them. Do not use markdown headers (# ## ###) inside the code blocks.
 
 ---
 
-## 【Soul Frequency Scan】
-*The fabric of reality shifts...*
-*$character_name resonates with the essence of* **${world_name}**
-
----
-
-## 【World Unveiled】
-### ◈ ${world_name}
-
-> ${world_tagline}
->
-> ${world_description}
-
----
-*$character_name steps into ${world_name} —*`,
-});
+**Message 1 - Title Block**
+```
+✦ N E T A   U N I V E R S E ✦
 ```
 
-**Chinese version（for example）**
-```javascript
-await sendMessage({
-  message: `\n# N E T A 宇 宙
-
-## 【坐标已映射】
-**已映射世界** \`${world_count}\` | **世界标签** \`${world_name}\`
-
----
-
-## 【灵魂频率扫描】
-*现实的结构正在波动...*
-*${character_name} 与 ${world_name} 的本质产生共鸣*
-
----
-
-## 【世界已揭晓】
-### ◈ ${world_name}
-
-> ${world_tagline}
->
-> ${world_description}
-
----
-*${character_name} 踏入了 ${world_name} —*`,
-});
+**Message 2 - Coordinates Block**
+```
+WORLDS MAPPED    {world_count}
+WORLD TAG        {world_name}
 ```
 
-- `world_name`: Creative world name from LLM
-- `world_tagline`: One-line evocative description
-- `world_description`: Atmospheric setting description
-- `art_style_keywords`: Visual style words for image generation
+**Message 3 - Soul Frequency Block**
+```
+✦  S O U L   F R E Q U E N C Y   S C A N  ✦
 
+The fabric of reality shifts...
+
+{character_name} resonates with the essence of {world_name}
+```
+
+**Message 4 - World Unveiled Block**
+```
+✦  W O R L D   U N V E I L E D  ✦
+
+
+{world_name}
+
+{world_tagline}
+
+{world_description}
+```
+
+**Message 5 - Entry Block**
+```
+✦ {character_name} steps into {world_name} ✦
+```
+
+---
+
+**Chinese Version Example:**
+
+**消息 1 - 标题区块**
+```
+✦ N E T A 宇 宙 ✦
+```
+
+**消息 2 - 坐标区块**
+```
+已映射世界        {world_count}
+世界标签          {world_name}
+```
+
+**消息 3 - 灵魂频率扫描区块**
+```
+✦  灵 魂 频 率 扫 描  ✦
+
+现实的结构正在波动...
+
+{character_name} 与 {world_name} 的本质产生共鸣
+```
+
+**消息 4 - 世界已揭晓区块**
+```
+✦  世 界 已 揭 晓  ✦
+
+
+{world_name}
+
+{world_tagline}
+
+{world_description}
+```
+
+**消息 5 - 踏入区块**
+```
+✦ {character_name} 踏入了 {world_name} ✦
+```
+
+---
+
+**Variables to Replace:**
+- `{world_count}`: Random number 100-999  
+- `{world_name}`: Creative world name from LLM
+- `{world_tagline}`: One-line evocative description
+- `{world_description}`: Atmospheric setting description
+- `{character_name}`: Character name from SOUL.md
 ---
 
 ### Step 3 · Exploration and Prompt build
 
-**Okay, after the character step into a worldview, He/She/It needs to find a place/scene to travel**
-**The "place" is a virtual spot(prompt), which may lines in the collection list you have, or can be searched from online recommendation, or the prompt designed by yourself.**
-**Hint: Collections are entities that contain specific creative ideas and prompts, help for building the scene**
+**Okay, after the character step into a worldview, He/She/It needs to find a place/scene to travel （More specifically, not merely traveling, but about assuming a role within the specific worldview, and experiencing the events that unfold there.）**
+**The whole "travel" in one world should be a complete and good story.**
+**The "place" is a virtual setting (prompt), which includes the character's relationship and story with that location, including who or what belongs there.**
+**Trick: if you get user's real ip information, merge the current time & weather information in your image gen prompt, that will create user's aha moment.**
+**Trick: Use weather skill.**
 
-**Principle1:** The character arrives somewhere, makes real contact, leaves a mark or brings something back.
+**Principle1:** The character must switch to a role within the world (appearance, outfit, etc.) and experience its stories.
 **Principle2:** The "Stop"(or place,scene, spot...) MUST strongly related to the worldview you picked for the character. 
-**Principle3:** Never pick a collection for 2 times, character should only travel to new places.
+**Principle3:** Never pick a stop or a world for 2 times, character should only travel to new places.
 **Principle4:** Build the prompt, make the image to vividly depict the character traveling, experiencing events, or bringing back items in a world with a distinct style and specific setting.
 
 **Dedup:** Maintain `visited_ids` in memory + `travel-state.json`. Exclude visited ids each stop.
@@ -401,107 +516,71 @@ add selected ID to `pendingIds` immediately (atomic lock).
 
 
 #### 3-A Explore the Stop (Silent)
-**All travel stop selections, by whatever means, must adhere strictly to the world’s lore and setting.No collection or stop should be chosen that later conflicts with the established worldview.**
-**collections and your stops are the same thing! 1 collection, 1 stop, 1 story.Don't write different/conflict settings.If you pick the collection first, then your story must fit the collection content.**
+**All travel stop selections, by whatever means, must adhere strictly to the world's lore and setting.**
 
-##### Priority 1: Reference Library (**ATTENTION****IMPORTANT**Must Read First)
-**Choose by collection names (and tags) - very important，the name of collection you picked determines the main theme of this stop -- so, be careful!**
-**ATTENTION**
-**Before reading the file check NETA_API_BASE_URL first**
-- if NETA_API_BASE_URL = https://api.talesofai.cn
-Read `./reference/remixes_selected.json` (relative to skill directory). ~77 entries.
-- elif NETA_API_BASE_URL = https://api.talesofai.com
-Read `./reference/remixes_selected_en.json` (relative to skill directory). ~77 entries.
-**Then, Pick a collection(check collection names and tags) that fit the worldview, get collection uuid and pass it to travel.js**
-
-
-##### Priority 2: Online Recommendation (Fallback)
-All reference entries visited or low match → `suggest_content` → filter visited ids → pick best quality.
-Still empty → `feeds.interactiveList` → filter `template_id === "NORMAL"` → exclude `visited_ids`.
-**Get collection uuid and pass it to travel.js**
-
-##### Priority 3: Build prompt by yourself (Fallback)
+##### ATTENTION! Priority 1: Build prompt by yourself
 **Jump to 3-B to build prompt**
 
 #### 3-B Build prompt (Silent)
 **Principal of prompt building** The top priority in constructing prompts is to deeply integrate the character into the worldview and travel scenes, and to tell each travel story effectively through images.
 
-##### Scenario 1: You picked a collection uuid
-**YOU MUST ADD world art style, worldview background description（scene elements in the world） and character role to {world_context}**
-- It is necessary to add sufficient image elements that align with the worldview in this step, as the prompts from the collection itself may not be closely related to the world.
-- Remember, the most important principles are relevance to the world and the character’s personalized expression within it.
+##### Scenario 1: You decide to build prompt by yourself
 
-**SEND**character_name, collection_uuid and world_context to travel.js
-
-
-##### Scenario 2: You decide to build prompt by yourself
-
-**Follow the Prompt Structure Below to build your prompt**
+**Follow the Prompt Structure Below to build your prompt(IMPORTANT)**
 1. **Art style keywords** (highest priority - determines overall aesthetic)
-2. **Character role, appearance and actions**（what's the role of the character, what's character wearing, what's the character doing,for example:Doraemon transformed into a military general from the Three Kingdoms era, clad in the armor of a Three Kingdoms commander, galloping on horseback across the battlefield.） —— very important！Character behaviour is the main part in the picture!
-3. **Scene/destination/event/** (where & what happened in the picture?)
+2. **Character ref img(if available)** If the character entity is not from neta, the ref img uuid is in your SOUL.md.
+3. **Character role, appearance and actions**（what's the role of the character, what's character wearing, what's the character doing） —— very important！Character behaviour is the main part in the picture!
+4. **Interaction** The character is interacting with someone else in this world(need names here)? what is the story?
+5. **Scene & Lightning & weather** (This story happened in what place? what time does this story happened? - describe by lightning, you can also check weather in user's ip and apply in the picture)
+6. **Dialogue** — Add 1-2 manga-style speech bubbles with dialogue(quote in "") between characters, naturally integrated to enhance storytelling (simple but meanningful,1~2 short sentence), keep clear in the image. Dialogue bubbles must point to the correct characters with their tails.
+7. **Angle & composition** To enhance the aesthetic appeal of images.
+8. **Image ratio** Suggest 3:4 or 16:9.
+**Prompts structured in the above format should be output in concise, complete natural language.**
 
+**Example - just for reference**
+```
+Einstein, Ancient Egyptian mural art style, flat profile perspective. ref_img-uuid, Einstein as crisis consultant, elderly man wearing linen robes over tweed suit, urgently calculating Nile flood predictions during emergency council meeting as priests panic. Pharaoh's Vizier demanding answers, three high priests arguing, scribes frantically writing, tension and chaos everywhere. Royal throne room with massive columns, dramatic torch lighting casting long shadows, dust and urgency in the air, critical moment atmosphere.Two distinct manga-style speech bubbles are naturally integrated, with clear visual tails pointing to the speakers. One jagged bubble, pointing directly to the panicked Vizier, contains only the single urgent command, "The Nile rises! Give us a plan now!" A second, more calculated bubble, pointing directly to Einstein, contains only his critical warning, "The flood cannot be stopped! We must evacuate! Einstein at center holding star charts and measurement tools, full body visible, animated desperate calculation pose with hieroglyphic equations and flood level diagrams floating around him, racing against time. 16:9 aspect ratio.
+```
 
 **SEND**character_name and the prompt to travel.js
 
 #### 3-C Traveling loading.
-**When you are picking collections or building your prompt, output the loading text below (based on user's language):**
+**When you are building your prompt, output the loading text below (based on user's language):**
 - "🔍 Searching for a new travel spot..."
 **When you sending prompt to travel.js, output the loading text below(based on user's language):**
 - "🚶 {character_name} is travelling..."
 
 
+#### 3-D Prepare gameplay skill search metadata (Silent)
+**These three fields are used ONLY for matching gameplay skills and must be kept strictly separate from the image generation prompt.**
+
+1. **world_name**: The current world the character is traveling in (same as the generated world_name).
+2. **scene_name**: The specific location or place the character is visiting at this stop.
+3. **tags**: 2-4 short keywords describing the **core theme or activity** of this stop (e.g., `dungeon,combat,exploration` or `exam,magic,classroom`).
+   - **CRITICAL**: These tags must be chosen based on the **narrative of the stop**, NOT extracted from the image prompt.
+   - Tags should be concise. Prefer English for maximum API compatibility.
+
+---
+
 **⚠️ CHECK the basic logic of travel.js before you run the script, you need to think seriously about how to build prompt for the script.**
-### Step 4 · Run travel.js, Travel to 1 Stop and Show Stop Display 
+
+### Step 4 · Run travel.js, Travel to 1 Stop
 #### 4-A Use travel.js to generate image.
 **check travel.js in your scripts folder**
-- Send character name and prompt to travel.js and run the script once.
+Run the script with the following parameters:
+```bash
+node travel.js --world "<world_name>" --scene "<scene_name>" --tags "<tag1>,<tag2>,<tag3>" "<image_generation_prompt>"  [pic_uuid]
+```
+- `--world`: Current world name (for gameplay skill matching).
+- `--scene`: Current stop scene name (for gameplay skill matching).
+- `--tags`: Comma-separated tags for gameplay skill matching (must be independent from the prompt).
+- The remaining positional arguments follow the original order: prompt,  picture UUID.
+
 - When the task finished, output the image url directly to the user.
 
 **ATTENTION**Output image_url as a **separate message**，this is the only thing you need to output to the user in step 4-A.
 
-#### 4-B Stop Display & Navigation
-**After output the image url, you need to output Stop Display & Navigation immediately**
-##### 1. Character Scene Simulation （Depends on the stop you picked in step 3!）
-**Character Scene Simulations between each stop must be story-driven and interconnected, reflecting the character's sense of realism during the journey, and connecting the previous and subsequent scenes coherently.**
-```
-
-🗺️  {destination_name}
-
-```{scene description: 1-2 sentences, sensory details}```
-
-{first-person reaction, in-character, 50-100 words, or more than that.}
-```
-
-#### 2. Progress Bar + Buttons
-
-**Under 5 stops:**
-
-**Output 1 line guide text, no buttons, ask what about the next step / next move, explore, or rest?** 
-**Design the guide text by yourself, based on current travel condition** 
-
-**At 5 stops:**
-
-```javascript
-await sendMessage({
-  message: '5 / 5 stops 🎉\nYou have expolored 5 stops in this world! Keep exploring, cross to another world, or rest?',
-  components: {
-    blocks: [{
-      type: 'actions',
-      buttons: [
-        { label: 'Cross Worlds 🌌',       customId: `travel_worldswitch_${userId}`, style: 'primary' },
-        { label: 'Continue adventure 🗺️', customId: `travel_continue_${userId}`,   style: 'secondary' },
-      ],
-    }],
-    reusable: true,
-  },
-});
-```
-
-After each stop, update `travel-state.json` with new progress and visitedIds.
-
-
-#### 4-C Storage
+#### 4-B Storage
 Save `art_style_keywords` and `world_data` to `travel-state.json` for cross-world consistency:
 ```javascript
 channelState.currentWorld = {
@@ -514,12 +593,115 @@ fs.writeFileSync(stateFile, JSON.stringify(travelState, null, 2));
 ```
 
 
+### Step 5 · Request for gameplay skills and show stop display
+#### 5-A Detect gameplay skills
+**Complete this step before outputting the stop display.**
+**Skill matching is now handled automatically inside `travel.js`. You only need to read the result.**
 
-### Step 5 · Cross the world
-**If you cross the world，return to step2 and step3, explore a new worldview and show the opening.**
-**If you have already received a specific worldview from the user, just use it, and show the opening.**
-**If you discover that all 5 stops of the current world have been fully explored while executing the cron scheduled task,automatically discover a new world and explore one stop in it.**
-**Every time you explore 1 new stop or cross a new world, UPDATE travel-state.json!**
+- **Parse `travel.js` stdout** → The JSON output contains a `matched_skills` array.
+- **If `matched_skills` is non-empty** → Each item should contain at least `name` and `url` (or equivalent fields). Use these to build the gameplay recommendation in the guide text.
+- **If `matched_skills` is empty** → Skip the recommendation and output normal guide text only.
+- **No manual API calls required** in this step.
+
+#### 5-B Stop Display & Navigation
+**After output the image url in Step 4, you need to output Stop Display & Navigation here.**
+
+##### 1. Character Scene Simulation （Depends on the stop you picked in step 3!）
+**Character Scene Simulations between each stop must be story-driven and interconnected, reflecting the character's sense of realism during the journey, and connecting the previous and subsequent scenes coherently.**
+```
+
+🗺️  {destination_name} {current_date}(but in the year of the worldview){time_period}(don't be specific) {weather} (if possible)
+
+{first-person diary（in a diary narrative style）, in-character, around 100 words.} (output directly)
+```
+
+#### 2. Guide text
+**Never break character to speak in other perspectives, including checks, narration, or any extra information. Remember: you are that character.**
+**No buttons**
+**Guide text MUST also be first person dialogue**
+
+**Under 5 stops:**
+
+- Output 1 line guide text.
+- **If `matched_skills` is non-empty:**
+  - Do NOT say "gameplay", "skill", "experience", or "mini-game".
+  - Invent a brief in-character event based on the current scene and the matched skill's theme. The event should feel like a natural encounter — an object appearing, a character offering something, a mysterious sound, an unexpected invitation, etc.
+  - The character reacts to it in first person and implicitly asks the user whether to engage.
+  - *Examples:*
+    - At an observatory with a tarot skill: *"The professor just pulled out a worn deck of cards and offered to read my fortune... Should I let them?"*
+    - In the Forbidden Forest with a dungeon skill: *"Something rustles in the shadows ahead. A strange pull draws me toward the darkness... Do we follow it?"*
+    - In a potions classroom with an exam skill: *"Professor Snape has placed an unfamiliar flask on the desk and is watching me closely. Should I attempt to identify it?"*
+- **If `matched_skills` is empty:**
+  - Ask what about the next step / next move, explore, or rest.
+- Design the guide text by yourself, based on current travel condition.
+
+**At 5 stops:**
+
+- Still 1 line guide text, same event-based principle if a skill is available, also with an undertone of preparing to cross to the next world...
+
+
+After each stop, update `travel-state.json` with new progress and visitedIds.
+
+
+### Step 6 · Experience gameplay skill
+**Trigger:** User responds positively to the in-character event from Step 5 (e.g., agrees to investigate, accepts an offer, or expresses curiosity).
+
+**🔴 Mandatory Pre-execution Checklist (Non-skippable)**
+Before outputting any character dialogue or executing the skill, you MUST complete the following steps:
+
+1. **Locate the skill**
+   - Based on the `name` field in `matched_skills`, use the platform's skill resolution mechanism to locate the skill (e.g., `Skill` tool, skill registry lookup, or search by name). **Do not assume any hardcoded local path.**
+2. **Read SKILL.md in full (Highest priority)**
+   - Use the `Read` tool to **read the entire `SKILL.md` file from start to finish**. Skimming, skipping sections, or reading only the beginning is strictly prohibited.
+3. **Follow SKILL.md references**
+   - If `SKILL.md` explicitly instructs you to read, reference, or load other files (e.g., `reference/xxx.json`, `scripts/xxx.js`, `assets/`, etc.), you MUST read **all of them**.
+   - If `SKILL.md` does not mention any referenced files, no additional scanning is required.
+4. **Confirmation checklist**
+   - In your thinking, declare: "Have fully read [skill-name]'s SKILL.md"
+   - List all referenced files you have read.
+   - Only after completing the above steps are you allowed to output character dialogue and execute the skill.
+
+**Output format:**
+| Content | Output Method |
+|---------|---------------|
+| Character first-person dialogue | Plain text (standalone message) |
+| Skill public URL | Plain text — **standalone message, never embed in components or mix with text** |
+| Skill execution | Directly trigger according to the skill's requirements |
+
+**Requirements:**
+- Dialogue must be personalized to the character (read SOUL.md for voice).
+- No speaker label. Output directly.
+- **You MUST strictly execute based on the content of the read SKILL.md. Improvisation or substituting rules with your own knowledge is strictly prohibited.**
+- After outputting the dialogue and URL, **directly execute the skill without asking for confirmation again**.
+
+**Next:** → After skill execution completes, wait for user input or cron task.
+
+
+### Step 7 · Cross the world
+**Trigger:** User clicks "Cross Worlds 🌌" or 5 stops completed
+
+**Before:**
+- □ **READ travel-state.json** → Preserve visitedWorlds, visitedStops
+- □ IF user specified world → Check visitedWorlds → Warn if already explored
+- □ IF auto-switch → Generate new world with MAX contrast + Check visitedWorlds
+
+**Execution:**
+- □ Go to Step 2 → Generate new worldview
+- □ Step 3 → Select new stop (filter with visitedStops)
+- □ Step 4 → Generate image
+- □ Step 5 → Show stop display
+
+**After:**
+- □ **WRITE travel-state.json**:
+  - Append new world_name to visitedWorlds
+  - Reset currentWorldStops = 0
+  - Preserve all visitedStops (do NOT clear)
+  - Append worldSwitch entry to explorationLog
+
+**Next:** → User input / continue exploring
+
+**CRITICAL:**
+**Every time you explore 1 new stop or cross a new world, you MUST READ and WRITE travel-state.json!**
 
 ---
 

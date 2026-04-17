@@ -1,0 +1,21 @@
+{
+  "channels": {
+    "[CHANNEL_ID_PLACEHOLDER]": {
+      "cronConfigured": false,
+      "cronJobIds": [],
+      "currentWorld": {
+        "world_name": "",
+        "art_style_keywords": [],
+        "world_description": "",
+        "generated_at": ""
+      },
+      "exploration": {
+        "currentWorldStops": 0,
+        "visitedWorlds": [],
+        "visitedStops": [],
+        "pendingStopId": null,
+        "explorationLog": []
+      }
+    }
+  }
+}

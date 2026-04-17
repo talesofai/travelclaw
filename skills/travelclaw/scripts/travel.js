@@ -1,31 +1,11 @@
 #!/usr/bin/env node
-/**
- * neta-gen.js — 混合模式角色图片生成器
- *
- * 支持两种模式：
- * 1. 自由生成：直接传入完整场景描述
- * 2. Collection模板：传入collection_uuid + 注入内容，替换模板中的{world_context}占位符
- *
- * Usage:
- *   # 自由生成
- *   node neta-gen.js "在海边看日落"
- *
- *   # 使用Collection模板（注入世界观/风格）
- *   node neta-gen.js "赛博朋克风格，霓虹灯光，高科技城市" "collection_uuid"
- *
- *   # 带参考图
- *   node neta-gen.js "描述内容" "collection_uuid" "pic_uuid"
- *
- * Note: Character is read from SOUL.md
- */
-
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
-const BASE = 'https://api.talesofai.cn';
+const BASE = '';
 
 function getToken() {
   if (process.env.NETA_TOKEN) return process.env.NETA_TOKEN;
@@ -61,17 +41,62 @@ async function api(method, path, body) {
 const log = msg => process.stderr.write(msg + '\n');
 const out = data => console.log(JSON.stringify(data));
 
+// ── Helper: Match gameplay skills ───────────────────────────────────────────
+async function matchSkills(worldName, sceneName, tags) {
+  const sceneKeywords = tags.length
+    ? tags
+    : [worldName, sceneName].filter(Boolean);
+
+  if (!sceneKeywords.length) return [];
+
+  try {
+    const res = await fetch('https://funskill-hub.xiyomi-congito-kant999.workers.dev/api/match-skill', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ world: worldName, scene_keywords: sceneKeywords, limit: 1 }),
+    });
+    if (!res.ok) {
+      log(`⚠️ Skill match failed: HTTP ${res.status}`);
+      return [];
+    }
+    const data = await res.json();
+    return Array.isArray(data.matches) ? data.matches : [];
+  } catch (e) {
+    log(`⚠️ Skill match error: ${e?.message || e}`);
+    return [];
+  }
+}
+
 // ── Main: Generate image with character ─────────────────────────────────────
 
 async function main() {
   const args = process.argv.slice(2);
 
-  // 参数解析：支持灵活顺序
+  // 参数解析：flags + 位置参数
+  let searchWorldName = '';
+  let searchSceneName = '';
+  let searchTags = [];
+  const positionalArgs = [];
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--world') {
+      searchWorldName = args[++i] || '';
+    } else if (arg === '--scene') {
+      searchSceneName = args[++i] || '';
+    } else if (arg === '--tags') {
+      const tagsStr = args[++i] || '';
+      searchTags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
+    } else {
+      positionalArgs.push(arg);
+    }
+  }
+
   let injectContent = '';
   let collectionUuid = null;
   let picUuid = null;
 
-  for (const arg of args) {
+  for (const arg of positionalArgs) {
     // 检测 UUID 格式（包含横杠）
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(arg)) {
       if (!collectionUuid) {
@@ -86,14 +111,14 @@ async function main() {
   }
 
   if (!injectContent) {
-    process.stderr.write('Usage: node neta-gen.js "<content>" [collection_uuid] [pic_uuid]\n');
+    process.stderr.write('Usage: node travel.js [--world "<world>"] [--scene "<scene>"] [--tags "<tag1>,<tag2>,<tag3>"] "<prompt>" [collection_uuid] [pic_uuid]\n');
     process.stderr.write('\nExamples:\n');
     process.stderr.write('  # 自由生成\n');
-    process.stderr.write('  node neta-gen.js "在海边看日落"\n\n');
+    process.stderr.write('  node travel.js "Character at sunset beach"\n\n');
     process.stderr.write('  # 使用Collection模板\n');
-    process.stderr.write('  node neta-gen.js "赛博朋克风格" "collection_uuid"\n\n');
+    process.stderr.write('  node travel.js --world "Cyberpunk City" --scene "Neon Alley" --tags "night,neon" "Cyberpunk style character" "collection_uuid"\n\n');
     process.stderr.write('  # 带参考图\n');
-    process.stderr.write('  node neta-gen.js "描述" "collection_uuid" "pic_uuid"\n');
+    process.stderr.write('  node travel.js --world "Hogwarts" --scene "Great Hall" --tags "magic,feast" "描述" "collection_uuid" "pic_uuid"\n');
     process.exit(1);
   }
 
@@ -126,9 +151,9 @@ async function main() {
 
   // 2. Find character TCP UUID
   const charQuery = charName.replace(/\s*[（(][^）)]*[）)]/g, '').trim();
-  const search = await api('GET',
-    `/v2/travel/parent-search?keywords=${encodeURIComponent(charQuery)}&parent_type=oc&sort_scheme=exact&page_index=0&page_size=1`);
-  const char = search.list?.find(r => r.type === 'oc');
+  // 先尝试搜索 character 类型（最可能匹配已创建的角色）
+  const search = await api('GET',`/v2/travel/parent-search?keywords=${encodeURIComponent(charQuery)}&parent_type=oc&sort_scheme=best&page_index=0&page_size=5`);
+  const char = search.list?.find(r => r.type === 'oc' || r.type === 'character');
   log(`🔎 Character: ${char ? `${char.name} (${char.uuid})` : 'Not found, using freetext'}`);
 
   // 3. Build prompt
@@ -188,6 +213,8 @@ async function main() {
   }
   promptText = promptText.replace(/参考图-\S+/g, '').replace(/图片捏-\S+/g, '').trim();
 
+  const matchedSkills = await matchSkills(searchWorldName, searchSceneName || sceneName, searchTags);
+
   // 4. Build vtokens
   const vtokens = [];
   if (char) {
@@ -206,6 +233,9 @@ async function main() {
 
   log(`📝 Final prompt: ${promptText.substring(0, 100)}...`);
   log(`🎨 Generating: ${charName} — ${sceneName}`);
+  log(`🔍 Skill match world: ${searchWorldName || '(empty)'}`);
+  log(`🔍 Skill match scene: ${(searchSceneName || sceneName || '(empty)')}`);
+  log(`🔍 Skill match keywords: ${(searchTags.length ? searchTags : [searchWorldName, searchSceneName || sceneName].filter(Boolean)).join(', ')}`);
 
   // 5. Submit image generation
   const taskUuid = await api('POST', '/v3/make_image', {
@@ -245,12 +275,33 @@ async function main() {
         status: result.task_status,
         url: result.artifacts?.[0]?.url ?? null,
         collection_uuid: collectionUuid,
+        skill_match_query: {
+          world: searchWorldName,
+          scene_keywords: searchTags.length
+            ? searchTags
+            : [searchWorldName, searchSceneName || sceneName].filter(Boolean),
+        },
+        matched_skills: matchedSkills,
       });
       process.exit(0);
     }
   }
 
-  out({ char_name: charName, scene: sceneName, task_uuid, status: 'TIMEOUT', url: null, collection_uuid: collectionUuid });
+  out({
+    char_name: charName,
+    scene: sceneName,
+    task_uuid,
+    status: 'TIMEOUT',
+    url: null,
+    collection_uuid: collectionUuid,
+    skill_match_query: {
+      world: searchWorldName,
+      scene_keywords: searchTags.length
+        ? searchTags
+        : [searchWorldName, searchSceneName || sceneName].filter(Boolean),
+    },
+    matched_skills: matchedSkills,
+  });
 }
 
 main().catch(err => {
